@@ -143,6 +143,7 @@ To generate the production-ready application:
 npm run build
 ```
 
+<<<<<<< HEAD
 To preview the production build:
 
 ```bash
@@ -200,3 +201,14 @@ Anomaly scores indicate statistical deviations and should not be interpreted as 
 **Domain:** Cybersecurity & Network Anomaly Detection
 
 *Building smarter ways to identify hidden network threats.*
+=======
+## Resilience upgrades (Hurdle: attacker learns your threshold)
+
+The Resilience view adds three defensive capabilities:
+
+1. **Threshold observatory:** tune the anomaly sensitivity and inspect a rolling outbound-data total/trend. The Low-and-Slow Exfiltration scenario demonstrates why single-reading thresholds are insufficient: the detector also correlates sustained outbound activity.
+2. **Host-aware response policy:** critical infrastructure (Domain Controller, NAS, shared access points) receives scoped containment recommendations rather than blanket shutdown. Standard endpoints can be isolated more aggressively. The button runs a simulation only; it does not touch real hosts.
+3. **False-positive feedback:** analysts can mark alerts as false positives. The dashboard displays the count and share of alerts marked this way, making detector quality visible rather than claiming every alert is a confirmed attack.
+
+The app remains a front-end simulation using synthetic telemetry. These controls are demonstration logic, not a production IDS/IPS or live endpoint-response integration.
+>>>>>>> d41b534 (third update: added new features ui enhancment)

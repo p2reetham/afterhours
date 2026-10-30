@@ -129,6 +129,7 @@ export const METRICS_CONFIG = [
   { id: "rps",     label: "Req / sec",   unit: "",     base: 340, min: 0, max: 1000, color: "#38bdf8" },
   { id: "errors",  label: "Error Rate",  unit: "%",    base: 1.2, min: 0, max: 30,   color: "#f87171" },
   { id: "disk",    label: "Disk I/O",    unit: "MB/s", base: 85,  min: 0, max: 400,  color: "#c084fc" },
+  { id: "egress",  label: "Outbound Data", unit: "MB/min", base: 18, min: 0, max: 120, color: "#e879f9" },
 ];
 
 // ─── ML helpers ──────────────────────────────────────────────────────────────
@@ -151,3 +152,17 @@ export function initMetrics() {
   );
 }
 
+
+// Low-and-slow data theft: deliberately stays below a single-sample spike threshold.
+ATTACK_TYPES.push({
+  id: "low-slow-exfil", name: "Low-and-Slow Exfiltration", color: "#e879f9",
+  description: "A patient attacker slowly transfers small amounts of data while keeping every individual reading near the normal range.",
+  phases: [
+    "Reconnaissance: attacker observes normal outbound traffic and alert thresholds",
+    "Staging: small batches of sensitive data are prepared",
+    "Low-rate transfer: outbound traffic stays just below the single-sample alert line",
+    "Pattern evasion: transfer cadence shifts to blend into normal activity",
+    "Cumulative detector correlates sustained outbound volume and flags probable exfiltration"
+  ],
+  metrics: { egress: 24, disk: 104, rps: 352, errors: 1.4 }
+});

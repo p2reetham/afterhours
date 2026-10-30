@@ -144,7 +144,7 @@ const MEANING = {
   errors: "A rising error rate suggests probing, such as malformed requests from SQL injection tools, or services failing under load.",
   disk: "Heavy disk activity is typical of ransomware encrypting files, or of large amounts of data being copied out.",
 };
-const LIMIT = 1.8; // score > 0.45, where score = |z| / 4
+const LIMIT = 1.8; // default visual reference; adaptive limit is controlled in App
 
 function Detail({ id, setId, metrics, attack, onClose }) {
   useEffect(() => { const k = e => e.key === "Escape" && onClose(); addEventListener("keydown", k); return () => removeEventListener("keydown", k); }, [onClose]);
@@ -231,6 +231,10 @@ export default function App() {
   const [st, setSt] = useState({});
   const [toasts, setToasts] = useState([]);
   const [topoKey, setTopoKey] = useState("college");
+  const [threshold, setThreshold] = useState(1.8);
+  const [falsePositives, setFalsePositives] = useState(new Set());
+  const [feedback, setFeedback] = useState({});
+  const [responseLog, setResponseLog] = useState([]);
   const topo = topoKey === "small" ? TOPOLOGY_SMALL : TOPOLOGY_COLLEGE;
   const targets = topo.nodes.filter(n => n.type !== "external");
   const timers = useRef([]), ids = useRef(0);
@@ -247,7 +251,7 @@ export default function App() {
       const next = {}, na = [], ov = attack?.metrics || {};
       for (const cfg of METRICS_CONFIG) {
         const p = prev[cfg.id], cl = Math.max(cfg.min, Math.min(cfg.max, genMetric(p.current, burst, ov[cfg.id])));
-        const hist = [...p.history.slice(-59), cl], score = anomalyScore(cl, hist), anomalous = score > 0.45;
+        const hist = [...p.history.slice(-59), cl], score = anomalyScore(cl, hist), anomalous = score > Math.max(0.2, (threshold / 4));
         next[cfg.id] = { current: cl, history: hist, score, anomalous };
         if (anomalous && score > 0.5 && Math.random() > 0.7) na.push({ id: ++ids.current, type: "metric", metric: cfg.label, score, value: `${cl.toFixed(1)}${cfg.unit}`, time: clock() });
       }
@@ -285,6 +289,11 @@ export default function App() {
   const switchTopo = k => { if (k === topoKey) return; clear(); setAttack(null); setPhase(-1); setSt({}); setTopoKey(k); };
 
   const vals = Object.values(metrics), off = vals.filter(m => m.anomalous).length;
+  const egressHistory = metrics.egress.history;
+  const cumulativeEgress = egressHistory.slice(-15).reduce((sum, value) => sum + value, 0);
+  const egressTrend = egressHistory.length > 1 ? egressHistory.at(-1) - egressHistory.at(-15) : 0;
+  const slowExfilSuspected = !!(attack?.id === "low-slow-exfil" && cumulativeEgress > 250) || (egressTrend > 3 && cumulativeEgress > 250);
+  const fpRate = alerts.length ? Math.round(falsePositives.size / alerts.length * 100) : 0;
   const bad = Object.values(st).filter(v => v === "hijacked").length;
   const threat = Math.min(100, Math.round(Math.max((vals.reduce((a, m) => a + m.score, 0) / vals.length) * 150, (bad / targets.length) * 100)));
   const visible = alerts.filter(a => !dismissed.has(a.id));
@@ -306,6 +315,7 @@ export default function App() {
           <div className="mark"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.6" fill={attack ? C.red : C.cyan} /><circle cx="8" cy="8" r="6.4" stroke={attack ? C.red : C.cyan} strokeDasharray="2 2" /></svg></div>
           <NavBtn id="overview" label="Overview"><path d="M3 12a9 9 0 0 1 18 0M12 12l4-4M5 19h14" /></NavBtn>
           <NavBtn id="network" label="Topology"><path d="M12 4l7 4v8l-7 4-7-4V8z M12 4v16M5 8l14 8M19 8L5 16" /></NavBtn>
+          <NavBtn id="resilience" label="Resilience"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7zM8 12l2.5 2.5L16 9" /></NavBtn>
           <NavBtn id="alerts" label="Alerts" badge={visible.length}><path d="M6 17V11a6 6 0 0 1 12 0v6l2 2H4zM10 21h4" /></NavBtn>
         </nav>
         <main>
@@ -347,6 +357,26 @@ export default function App() {
             </div>
             <Topology key={topoKey} topo={topo} st={st} metrics={metrics} />
           </>}
+
+          {tab === "resilience" && <section className="resilience">
+            <div className="card"><h2>Threshold observatory <small>Adaptive detection</small></h2>
+              <p className="muted">Attackers can learn a fixed line and stay just below it. Tune the sensitivity and compare point alerts with a cumulative trend detector.</p>
+              <label className="threshold-control">Anomaly sensitivity <b>{threshold.toFixed(1)}σ</b><input type="range" min="1.0" max="3.5" step="0.1" value={threshold} onChange={e => setThreshold(Number(e.target.value))}/></label>
+              <div className="mini-grid"><div><span>Single-sample threshold</span><b>{threshold.toFixed(1)}σ</b></div><div><span>15-sample outbound total</span><b>{cumulativeEgress.toFixed(0)} MB/min-samples</b></div><div><span>Outbound trend</span><b>{egressTrend >= 0 ? "+" : ""}{egressTrend.toFixed(1)} MB/min</b></div></div>
+              <div className={"insight " + (slowExfilSuspected ? "danger" : "safe")}><b>{slowExfilSuspected ? "Cumulative exfiltration pattern detected" : "No sustained exfiltration pattern"}</b><p>{slowExfilSuspected ? "Individual readings may look harmless; the rolling total and gradual rise indicate a suspicious transfer pattern. Investigate destination, identity and data sensitivity." : "The detector also watches the accumulated outbound volume so a patient transfer cannot hide only by staying below a per-reading limit."}</p></div>
+            </div>
+            <div className="card"><h2>Host-aware response policy <small>Never isolate every machine the same way</small></h2>
+              <p className="muted">Response is based on business criticality and host role. These are recommended actions in this simulator, not commands sent to real machines.</p>
+              {[{name:"Domain Controller",role:"Identity / critical",action:"Restrict suspicious sessions, block malicious egress and require analyst approval before isolation."},{name:"NAS Storage",role:"Data / critical",action:"Pause unusual outbound transfers, preserve snapshots and keep essential internal access available."},{name:"Admin Workstation",role:"Privileged endpoint",action:"Quarantine endpoint VLAN, revoke active tokens and collect forensic evidence."},{name:"Lab PC Cluster",role:"Standard endpoint",action:"Automatically isolate the affected endpoint and allow clean rebuild."},{name:"Library / Hostel AP",role:"Shared network",action:"Apply client-level rate limits or block the offending device; do not shut down the whole access point."}].map(h => <div className="policy" key={h.name}><div><b>{h.name}</b><small>{h.role}</small></div><p>{h.action}</p></div>)}
+              <button className="btn go" onClick={() => { setResponseLog([{time:clock(),message:"Policy simulation: critical hosts protected; suspicious egress throttled; standard endpoint isolated."},...responseLog].slice(0,5)); toast("Safe response simulated","Critical services remain online; containment is scoped to the affected host.",C.mint); }}>Run safe-response simulation</button>
+              {responseLog.map((r,i)=><p className="muted" key={i}>{r.time} · {r.message}</p>)}
+            </div>
+            <div className="card"><h2>False-positive honesty <small>Analyst feedback loop</small></h2>
+              <div className="mini-grid"><div><span>Alerts raised</span><b>{alerts.length}</b></div><div><span>Marked false positive</span><b>{falsePositives.size}</b></div><div><span>Current false-positive share</span><b>{fpRate}%</b></div></div>
+              <p className="muted">A detector is not perfect. Mark an alert as a false positive when investigation finds a legitimate cause. The dashboard reports this feedback instead of treating every alarm as a confirmed attack.</p>
+              <div className="feed">{alerts.slice(0,8).map(a=><div className="row" key={a.id}><b>{a.attackName || a.metric || "Alert"}</b><time>{a.time}</time><p>{a.message || `${a.metric}: ${a.value}`}</p><button className="btn" disabled={falsePositives.has(a.id)} onClick={()=>{setFalsePositives(v=>new Set([...v,a.id]));setFeedback(v=>({...v,[a.id]:"Reviewed: legitimate activity / false positive"}));}}>{falsePositives.has(a.id)?"Marked false positive":"Mark false positive"}</button>{feedback[a.id] && <small>{feedback[a.id]}</small>}</div>)}</div>
+            </div>
+          </section>}
 
           {tab === "alerts" && <div className="card" style={{ maxWidth: 860 }}>
             <h2>Alert log<button className="btn" onClick={() => { setAlerts([]); setDismissed(new Set()); }}>Clear all</button></h2>

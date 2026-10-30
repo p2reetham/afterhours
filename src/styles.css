@@ -132,3 +132,17 @@ main{padding:22px clamp(16px,3vw,40px) 40px;min-width:0}
 .why h3{font:600 14px var(--body);color:var(--c);margin-bottom:6px}
 .why ul{list-style:none;display:grid;gap:8px;font-size:13px}
 .why b{color:var(--strong);font-weight:600}
+
+/* Resilience controls: threshold evasion, safe response and detector accountability */
+.resilience{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.resilience>.card:first-child,.resilience>.card:last-child{grid-column:1/-1}
+.muted{color:#9db3c6;line-height:1.55;font-size:13px}
+.threshold-control{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin:20px 0;color:#dceaf5}
+.threshold-control input{grid-column:1/-1;width:100%;accent-color:#46d9ff}
+.mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+.mini-grid>div{padding:13px;border:1px solid rgba(110,200,255,.15);border-radius:12px;background:rgba(9,25,43,.55);display:flex;flex-direction:column;gap:8px}
+.mini-grid span,.policy small{font-size:11px;color:#8fa9bd}.mini-grid b{font-size:19px;color:#e6f6ff}
+.insight{padding:14px;border-radius:12px;border:1px solid rgba(88,240,176,.25);margin-top:12px}.insight p{margin:7px 0 0;color:#b7cbd9;font-size:13px;line-height:1.5}.insight.safe{background:rgba(88,240,176,.06)}.insight.danger{border-color:rgba(255,64,87,.5);background:rgba(255,64,87,.08);color:#ff8090}
+.policy{display:grid;grid-template-columns:minmax(130px,.65fr) 1.8fr;gap:14px;padding:13px 0;border-bottom:1px solid rgba(110,200,255,.12)}.policy>div{display:flex;flex-direction:column;gap:5px}.policy p{margin:0;color:#b7cbd9;font-size:13px;line-height:1.5}
+.resilience .row button{margin-top:8px}.resilience .row small{display:block;color:#58f0b0;margin-top:5px}
+@media(max-width:850px){.resilience{grid-template-columns:1fr}.resilience>.card{grid-column:1}.mini-grid{grid-template-columns:1fr}.policy{grid-template-columns:1fr}}
