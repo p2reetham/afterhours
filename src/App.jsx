@@ -1,431 +1,1125 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import "./styles.css";
-import bg from "./assets/bg.jpg";
-import { ATTACK_TYPES, TOPOLOGY_SMALL, TOPOLOGY_COLLEGE, NODE_TYPE_COLORS, METRICS_CONFIG, anomalyScore, genMetric, initMetrics } from "./data.js";
 
-const C = { cyan: "#46d9ff", red: "#ff4057", amber: "#ffb627", mint: "#58f0b0" };
-const statusColor = (s, base) => s === "hijacked" ? C.red : s === "compromising" ? C.amber : base;
-const statusLabel = { hijacked: "Compromised", compromising: "Breaching", secure: "Secure" };
-const clock = () => new Date().toLocaleTimeString();
+// ─── THEMES ─────────────────────────────────────────────────────────────────
+const THEMES = {
+  midnight: {
+    name: "Midnight",
+    bg: "linear-gradient(135deg,#0a0c14 0%,#0d1022 100%)",
+    bgSolid: "#0a0c14",
+    glass: "rgba(16,20,38,0.72)",
+    glassBorder: "rgba(255,255,255,0.07)",
+    glassHover: "rgba(255,255,255,0.04)",
+    accent: "#6ee7f7",
+    accentGlow: "rgba(110,231,247,0.15)",
+    accent2: "#818cf8",
+    danger: "#f87171",
+    dangerGlow: "rgba(248,113,113,0.18)",
+    warn: "#fb923c",
+    warnGlow: "rgba(251,146,60,0.15)",
+    success: "#4ade80",
+    text: "#e2e8f0",
+    textDim: "#64748b",
+    textMuted: "#334155",
+    textStrong: "#f8fafc",
+    border: "rgba(255,255,255,0.06)",
+    borderAccent: "rgba(110,231,247,0.3)",
+    shadow: "0 8px 32px rgba(0,0,0,0.5)",
+    shadowSm: "0 2px 12px rgba(0,0,0,0.4)",
+    blur: "blur(20px)",
+  },
+  slate: {
+    name: "Slate",
+    bg: "linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%)",
+    bgSolid: "#0f172a",
+    glass: "rgba(15,23,42,0.75)",
+    glassBorder: "rgba(148,163,184,0.08)",
+    glassHover: "rgba(148,163,184,0.04)",
+    accent: "#a78bfa",
+    accentGlow: "rgba(167,139,250,0.15)",
+    accent2: "#38bdf8",
+    danger: "#fb7185",
+    dangerGlow: "rgba(251,113,133,0.18)",
+    warn: "#fbbf24",
+    warnGlow: "rgba(251,191,36,0.15)",
+    success: "#34d399",
+    text: "#cbd5e1",
+    textDim: "#64748b",
+    textMuted: "#1e293b",
+    textStrong: "#f1f5f9",
+    border: "rgba(148,163,184,0.07)",
+    borderAccent: "rgba(167,139,250,0.3)",
+    shadow: "0 8px 32px rgba(0,0,0,0.6)",
+    shadowSm: "0 2px 12px rgba(0,0,0,0.5)",
+    blur: "blur(20px)",
+  },
+  aurora: {
+    name: "Aurora",
+    bg: "linear-gradient(135deg,#042f2e 0%,#0c1a2e 50%,#1a0533 100%)",
+    bgSolid: "#042f2e",
+    glass: "rgba(4,47,46,0.7)",
+    glassBorder: "rgba(255,255,255,0.08)",
+    glassHover: "rgba(255,255,255,0.04)",
+    accent: "#2dd4bf",
+    accentGlow: "rgba(45,212,191,0.2)",
+    accent2: "#c084fc",
+    danger: "#f87171",
+    dangerGlow: "rgba(248,113,113,0.18)",
+    warn: "#fcd34d",
+    warnGlow: "rgba(252,211,77,0.15)",
+    success: "#86efac",
+    text: "#ccfbf1",
+    textDim: "#5eead4",
+    textMuted: "#134e4a",
+    textStrong: "#f0fdfa",
+    border: "rgba(45,212,191,0.1)",
+    borderAccent: "rgba(45,212,191,0.35)",
+    shadow: "0 8px 32px rgba(0,0,0,0.5)",
+    shadowSm: "0 2px 12px rgba(0,0,0,0.4)",
+    blur: "blur(20px)",
+  },
+  frost: {
+    name: "Frost",
+    bg: "linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 50%,#f0fdf4 100%)",
+    bgSolid: "#f0f9ff",
+    glass: "rgba(255,255,255,0.6)",
+    glassBorder: "rgba(14,165,233,0.12)",
+    glassHover: "rgba(14,165,233,0.06)",
+    accent: "#0284c7",
+    accentGlow: "rgba(2,132,199,0.15)",
+    accent2: "#7c3aed",
+    danger: "#dc2626",
+    dangerGlow: "rgba(220,38,38,0.12)",
+    warn: "#d97706",
+    warnGlow: "rgba(217,119,6,0.12)",
+    success: "#16a34a",
+    text: "#1e3a5f",
+    textDim: "#64748b",
+    textMuted: "#e0f2fe",
+    textStrong: "#0c1a2e",
+    border: "rgba(14,165,233,0.1)",
+    borderAccent: "rgba(2,132,199,0.3)",
+    shadow: "0 8px 32px rgba(14,165,233,0.12)",
+    shadowSm: "0 2px 12px rgba(14,165,233,0.08)",
+    blur: "blur(20px)",
+  },
+  carbon: {
+    name: "Carbon",
+    bg: "linear-gradient(135deg,#111 0%,#1a1a1a 100%)",
+    bgSolid: "#111",
+    glass: "rgba(26,26,26,0.8)",
+    glassBorder: "rgba(255,255,255,0.05)",
+    glassHover: "rgba(255,255,255,0.03)",
+    accent: "#f4f4f5",
+    accentGlow: "rgba(244,244,245,0.1)",
+    accent2: "#a3a3a3",
+    danger: "#ef4444",
+    dangerGlow: "rgba(239,68,68,0.18)",
+    warn: "#f59e0b",
+    warnGlow: "rgba(245,158,11,0.15)",
+    success: "#22c55e",
+    text: "#a1a1aa",
+    textDim: "#52525b",
+    textMuted: "#27272a",
+    textStrong: "#fafafa",
+    border: "rgba(255,255,255,0.05)",
+    borderAccent: "rgba(244,244,245,0.2)",
+    shadow: "0 8px 32px rgba(0,0,0,0.7)",
+    shadowSm: "0 2px 12px rgba(0,0,0,0.6)",
+    blur: "blur(20px)",
+  },
+};
 
-function Area({ data, color }) {
-  const lo = Math.min(...data), hi = Math.max(...data, lo + 1);
-  const pts = data.map((v, i) => `${(i / (data.length - 1)) * 100},${44 - ((v - lo) / (hi - lo)) * 40}`);
+// ─── ATTACK TYPES ────────────────────────────────────────────────────────────
+const ATTACK_TYPES = [
+  {
+    id: "ddos", name: "DDoS Flood", color: "#3b82f6",
+    description: "Distributed Denial-of-Service flooding endpoints with 847k req/s from 12,400 botnet nodes across 38 countries.",
+    phases: [
+      "Botnet activation — 12,400 compromised nodes coming online",
+      "SYN flood — TCP handshake table exhaustion in progress",
+      "UDP amplification via DNS reflection — 3.2 Tbps peak",
+      "Load balancer overwhelmed — dropping legitimate traffic",
+      "API gateway saturated — 503 errors cascading system-wide",
+    ],
+    metrics: { rps: 980, latency: 590, errors: 28, cpu: 97 },
+  },
+  {
+    id: "ransomware", name: "Ransomware", color: "#ef4444",
+    description: "LockBit 3.0 encrypting filesystem via AES-256 + RSA-2048. Lateral movement via SMB across 6 nodes.",
+    phases: [
+      "Initial access via phishing email — malicious macro executed",
+      "Privilege escalation — CVE-2024-1234 local exploit deployed",
+      "Lateral movement — SMB relay across subnet 10.0.1.0/24",
+      "Shadow copies deleted — vssadmin.exe terminated",
+      "Encryption active — 94,218 files locked, ransom note dropped",
+    ],
+    metrics: { disk: 390, cpu: 94, mem: 91, errors: 22 },
+  },
+  {
+    id: "mitm", name: "Man-in-the-Middle", color: "#f97316",
+    description: "ARP poisoning active. TLS traffic intercepted between API server and DB. Cert spoofing on internal LAN.",
+    phases: [
+      "ARP cache poisoning — gateway MAC overwritten on 4 hosts",
+      "SSL stripping — HTTPS downgraded to HTTP",
+      "Fake certificate injected — CN=internal-db.corp spoofed",
+      "Credential harvesting — 3 DB passwords captured in plaintext",
+      "Session tokens extracted — 14 active sessions hijacked",
+    ],
+    metrics: { latency: 340, errors: 15, mem: 78 },
+  },
+  {
+    id: "cryptojack", name: "Cryptojacking", color: "#a855f7",
+    description: "Monero miner (XMRig) deployed on 5 servers. CPU at 99%. C2 beacon to mining pool every 60s.",
+    phases: [
+      "Dropper via vulnerable npm package (event-stream fork)",
+      "XMRig unpacked to /tmp/.systemd-cache/ — hidden process",
+      "CPU governor set to performance — thermal limits disabled",
+      "Persistence via crontab + systemd service",
+      "Mining active — 4.7 H/s per node, C2 beacon active",
+    ],
+    metrics: { cpu: 99, mem: 88, disk: 280, rps: 45 },
+  },
+  {
+    id: "sqli", name: "SQL Injection", color: "#10b981",
+    description: "Blind SQLi campaign on /api/users via sqlmap. Extracting schema and dumping 128k-row credentials table.",
+    phases: [
+      "Reconnaissance — 4,200 malformed queries probing validation",
+      "Boolean-based blind SQLi confirmed — timing attack active",
+      "Database schema extracted — 23 tables enumerated",
+      "Credential dump — users table (128,430 rows) exfiltrating",
+      "xp_cmdshell escalation — OS command execution active",
+    ],
+    metrics: { errors: 19, latency: 280, rps: 620 },
+  },
+];
+
+// ─── NETWORK TOPOLOGIES ──────────────────────────────────────────────────────
+const TOPOLOGY_SMALL = {
+  id: "small",
+  name: "Network 1",
+  subtitle: "Client — Server",
+  nodes: [
+    { id: "client", label: "Client Machine", type: "client",   x: 200, y: 180, ip: "192.168.1.10" },
+    { id: "server", label: "Server",         type: "server",   x: 600, y: 180, ip: "192.168.1.1"  },
+  ],
+  edges: [["client","server"]],
+};
+
+const TOPOLOGY_COLLEGE = {
+  id: "college",
+  name: "Network 2",
+  subtitle: "College Campus Network",
+  nodes: [
+    { id: "isp",       label: "ISP / WAN",          type: "external",  x: 460, y: 40  },
+    { id: "core-sw",   label: "Core Switch",         type: "switch",    x: 460, y: 140 },
+    { id: "fw",        label: "Firewall",            type: "security",  x: 460, y: 240 },
+    { id: "router",    label: "Campus Router",       type: "router",    x: 460, y: 340 },
+    { id: "dist-sw1",  label: "Dist. Switch A",      type: "switch",    x: 200, y: 450 },
+    { id: "dist-sw2",  label: "Dist. Switch B",      type: "switch",    x: 720, y: 450 },
+    { id: "ap-lib",    label: "Library AP",          type: "wireless",  x: 80,  y: 570 },
+    { id: "lab-sw",    label: "Lab Switch",          type: "switch",    x: 240, y: 570 },
+    { id: "admin-sw",  label: "Admin Switch",        type: "switch",    x: 600, y: 570 },
+    { id: "ap-hostel", label: "Hostel AP",           type: "wireless",  x: 840, y: 570 },
+    { id: "srv-dc",    label: "Domain Controller",   type: "server",    x: 460, y: 460 },
+    { id: "lab-pc1",   label: "Lab PC Cluster",      type: "client",    x: 180, y: 680 },
+    { id: "lab-pc2",   label: "Lab PC Cluster B",    type: "client",    x: 320, y: 680 },
+    { id: "admin-pc",  label: "Admin Workstation",   type: "client",    x: 560, y: 680 },
+    { id: "nas",       label: "NAS Storage",         type: "database",  x: 700, y: 680 },
+  ],
+  edges: [
+    ["isp","core-sw"],["core-sw","fw"],["fw","router"],
+    ["router","dist-sw1"],["router","dist-sw2"],["router","srv-dc"],
+    ["dist-sw1","ap-lib"],["dist-sw1","lab-sw"],
+    ["dist-sw2","admin-sw"],["dist-sw2","ap-hostel"],
+    ["lab-sw","lab-pc1"],["lab-sw","lab-pc2"],
+    ["admin-sw","admin-pc"],["admin-sw","nas"],
+  ],
+};
+
+TOPOLOGY_COLLEGE.nodes.forEach((n, i) => {
+  if (!n.ip) n.ip = "10.10." + (Math.floor(i / 5) + 1) + "." + (10 + i);
+});
+
+const NODE_TYPE_COLORS = {
+  external: "#94a3b8", security: "#f97316", switch: "#3b82f6",
+  router: "#8b5cf6", server: "#10b981", client: "#06b6d4",
+  wireless: "#f59e0b", database: "#a855f7", gateway: "#6366f1", ml: "#ec4899",
+};
+
+const NODE_TYPE_ICON = {
+  external: "WAN", security: "FW", switch: "SW", router: "RT",
+  server: "SRV", client: "PC", wireless: "AP", database: "DB",
+  gateway: "GW", ml: "ML",
+};
+
+// ─── METRICS CONFIG ───────────────────────────────────────────────────────────
+const METRICS_CONFIG = [
+  { id: "cpu",     label: "CPU",         unit: "%",    base: 45,  min: 0, max: 100,  color: "#6ee7f7" },
+  { id: "mem",     label: "Memory",      unit: "%",    base: 62,  min: 0, max: 100,  color: "#a78bfa" },
+  { id: "latency", label: "Latency",     unit: "ms",   base: 120, min: 0, max: 600,  color: "#fb923c" },
+  { id: "rps",     label: "Req / sec",   unit: "",     base: 340, min: 0, max: 1000, color: "#38bdf8" },
+  { id: "errors",  label: "Error Rate",  unit: "%",    base: 1.2, min: 0, max: 30,   color: "#f87171" },
+  { id: "disk",    label: "Disk I/O",    unit: "MB/s", base: 85,  min: 0, max: 400,  color: "#c084fc" },
+];
+
+// ─── ML helpers ──────────────────────────────────────────────────────────────
+function anomalyScore(v, hist) {
+  if (hist.length < 10) return 0;
+  const vals = hist.slice(-50);
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  const std  = Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length) || 1;
+  return Math.min(1, Math.abs(v - mean) / std / 4);
+}
+function genMetric(prev, burst, target) {
+  if (target !== undefined) return prev + (target - prev) * 0.18 + (Math.random() - 0.5) * 3;
+  const spike = burst && Math.random() > 0.6;
+  const drift = prev + (Math.random() - 0.49) * 4;
+  return spike ? drift + (Math.random() > 0.5 ? 40 : -40) : drift;
+}
+function initMetrics() {
+  return Object.fromEntries(
+    METRICS_CONFIG.map(m => [m.id, { current: m.base, history: Array(60).fill(m.base), score: 0, anomalous: false }])
+  );
+}
+
+// ─── Glass box helper ─────────────────────────────────────────────────────────
+const glass = (T, extra = {}) => ({
+  background: T.glass,
+  backdropFilter: T.blur,
+  WebkitBackdropFilter: T.blur,
+  border: `1px solid ${T.glassBorder}`,
+  boxShadow: T.shadow,
+  borderRadius: 16,
+  ...extra,
+});
+
+// ─── Sparkline ────────────────────────────────────────────────────────────────
+function Sparkline({ data, color, anomalous, T }) {
+  const w = 150, h = 36;
+  const lo = Math.min(...data), hi = Math.max(...data) || lo + 1;
+  const pts = data.map((v, i) => `${(i/(data.length-1))*w},${h-((v-lo)/(hi-lo))*h}`).join(" ");
   return (
-    <svg viewBox="0 0 100 46" preserveAspectRatio="none" aria-hidden="true">
-      <polygon points={`0,46 ${pts.join(" ")} 100,46`} fill={color} opacity=".14" />
-      <polyline points={pts.join(" ")} fill="none" stroke={color} strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
+    <svg width={w} height={h} style={{ overflow: "visible", display: "block" }}>
+      <defs>
+        <linearGradient id={`sg${color.replace("#","")}`} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor={anomalous ? T.danger : color} stopOpacity="0.25"/>
+          <stop offset="100%" stopColor={anomalous ? T.danger : color} stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+      <polyline points={pts} fill="none" stroke={anomalous ? T.danger : color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
 }
 
-function Signal({ cfg, m, onOpen }) {
-  const color = m.anomalous ? C.red : cfg.color;
+// ─── Pill badge ───────────────────────────────────────────────────────────────
+function Pill({ label, color, T, pulse }) {
   return (
-    <button type="button" className={"sig" + (m.anomalous ? " bad" : "")} style={{ "--c": cfg.color }} onClick={onOpen} aria-label={`${cfg.label} details`}>
-      {m.anomalous && <span className="tag">Off baseline</span>}
-      <h3>{cfg.label}</h3>
-      <div className="v">{m.current.toFixed(1)}<small>{cfg.unit}</small></div>
-      <Area data={m.history} color={color} />
-      <div className="f"><span>Anomaly score {(m.score * 100).toFixed(0)}%</span><span>Open details</span></div>
-    </button>
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 5,
+      background: color + "18", color, border: `1px solid ${color}35`,
+      borderRadius: 20, padding: "3px 10px", fontSize: 10, fontWeight: 600,
+      letterSpacing: 0.5, fontFamily: "var(--mono)",
+      animation: pulse ? "pulse 1.4s ease-in-out infinite" : "none",
+    }}>
+      {pulse && <span style={{ width: 5, height: 5, borderRadius: "50%", background: color, display: "inline-block", animation: "pulse 1s ease-in-out infinite" }}/>}
+      {label}
+    </span>
   );
 }
 
-function AlertRow({ a, onDismiss }) {
-  const atk = a.type === "attack";
-  const sev = atk ? a.severity : a.score > 0.8 ? "Critical" : a.score > 0.5 ? "High" : "Medium";
-  const c = /crit/i.test(sev) ? C.red : /high/i.test(sev) ? C.amber : C.cyan;
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function Toast({ toasts, T }) {
   return (
-    <div className="row" style={{ "--c": c }}>
-      <b>{sev[0] + sev.slice(1).toLowerCase()}{atk ? ` · ${a.attackName}` : ` · ${a.metric}`}</b>
-      <time>{a.time}</time>
-      <p>{atk ? a.message : `${a.value} is about ${(a.score * 4).toFixed(1)}σ from the recent average. The detector flags anything past ${LIMIT}σ. Open the ${a.metric} card for what it can mean.`}</p>
-      {onDismiss && <button onClick={() => onDismiss(a.id)} aria-label="Dismiss alert">Dismiss</button>}
+    <div style={{ position: "fixed", top: 68, right: 20, zIndex: 9999, width: 320, pointerEvents: "none" }}>
+      {toasts.map(t => (
+        <div key={t.id} style={{
+          ...glass(T, { borderRadius: 12, marginBottom: 10 }),
+          border: `1px solid ${t.color}40`,
+          padding: "12px 16px", animation: "toastIn 0.35s cubic-bezier(0.34,1.56,0.64,1)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: t.color, flexShrink: 0 }}/>
+            <span style={{ color: t.color, fontWeight: 700, fontSize: 11, letterSpacing: 0.5, fontFamily: "var(--mono)" }}>{t.title}</span>
+          </div>
+          <div style={{ color: T.text, fontSize: 11, lineHeight: 1.5, paddingLeft: 14 }}>{t.message}</div>
+        </div>
+      ))}
     </div>
   );
 }
 
-function Gauge({ value }) {
-  const col = value < 25 ? C.mint : value < 50 ? C.cyan : value < 75 ? C.amber : C.red;
-  const label = value < 25 ? "Calm" : value < 50 ? "Watching" : value < 75 ? "Elevated" : "Critical";
+// ─── Alert row ────────────────────────────────────────────────────────────────
+function AlertRow({ alert, onDismiss, T }) {
+  const isA = alert.type === "attack";
+  const sev = isA ? alert.severity : alert.score > 0.8 ? "CRITICAL" : alert.score > 0.5 ? "HIGH" : "MEDIUM";
+  const col = sev === "CRITICAL" ? T.danger : sev === "HIGH" ? T.warn : T.accent;
   return (
-    <div className="gauge" role="img" aria-label={`Threat index ${value} of 100, ${label}`}>
-      <svg viewBox="0 0 200 110">
-        <path d="M10 100A90 90 0 0 1 190 100" stroke="rgba(110,200,255,.14)" pathLength="100" />
-        <path className="arc" d="M10 100A90 90 0 0 1 190 100" stroke={col} pathLength="100" style={{ "--v": value, filter: `drop-shadow(0 0 8px ${col})` }} />
-      </svg>
-      <div className="num"><b>{value}</b><span>Threat index · {label}</span></div>
+    <div style={{
+      display: "flex", alignItems: "flex-start", gap: 10,
+      background: col + "0e", border: `1px solid ${col}30`, borderLeft: `2px solid ${col}`,
+      borderRadius: 8, padding: "9px 12px", marginBottom: 6, animation: "fadeUp 0.25s ease",
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+          <span style={{ color: col, fontSize: 9, fontWeight: 700, letterSpacing: 1, fontFamily: "var(--mono)" }}>{sev}</span>
+          <span style={{ color: T.textDim, fontSize: 10, fontFamily: "var(--mono)" }}>{alert.time}</span>
+        </div>
+        <div style={{ color: T.text, fontSize: 12, lineHeight: 1.4 }}>
+          {isA
+            ? <><span style={{ color: T.textStrong, fontWeight: 600 }}>[{alert.attackName}]</span> {alert.message}</>
+            : <><span style={{ color: T.textStrong, fontWeight: 600 }}>{alert.metric}</span> anomaly detected — score <span style={{ color: col }}>{(alert.score*100).toFixed(0)}%</span>, value <span style={{ color: T.textStrong }}>{alert.value}</span></>
+          }
+        </div>
+      </div>
+      {onDismiss && (
+        <button onClick={() => onDismiss(alert.id)} style={{
+          background: "none", border: "none", color: T.textDim, cursor: "pointer",
+          fontSize: 16, padding: 0, lineHeight: 1, flexShrink: 0, opacity: 0.6,
+        }}>×</button>
+      )}
     </div>
   );
 }
 
-/* Isometric topology: nodes are tiles with pillars; moving dots show traffic. */
-const iso = n => ({ x: (n.x - n.y) * 0.866, y: (n.x + n.y) * 0.5 });
-const PILLAR = { server: 34, database: 30, switch: 14, router: 18, security: 26, client: 20, wireless: 24, external: 40 };
-
-function Pillar({ x, y, s, h, col }) {
-  const w = s * 0.5, hw = w * 0.866, hh = w * 0.5;
-  const P = (...p) => p.map(q => q.join(",")).join(" ");
+// ─── Metric card ─────────────────────────────────────────────────────────────
+function MetricCard({ cfg, m, T }) {
+  const pct = Math.min(100, ((m.current - cfg.min) / (cfg.max - cfg.min)) * 100);
   return (
-    <g>
-      <polygon points={P([x, y + hh * 2 - h], [x - hw, y + hh - h], [x - hw, y + hh], [x, y + hh * 2])} fill={col} opacity=".45" />
-      <polygon points={P([x, y + hh * 2 - h], [x + hw, y + hh - h], [x + hw, y + hh], [x, y + hh * 2])} fill={col} opacity=".75" />
-      <polygon className="top" points={P([x, y - h], [x + hw, y + hh - h], [x, y + hh * 2 - h], [x - hw, y + hh - h])} fill={col} stroke={col} />
-    </g>
+    <div style={{
+      ...glass(T, { borderRadius: 14, padding: "18px 18px 14px", position: "relative", overflow: "hidden" }),
+      border: m.anomalous ? `1px solid ${T.danger}50` : `1px solid ${T.glassBorder}`,
+      boxShadow: m.anomalous ? `0 0 24px ${T.dangerGlow}, ${T.shadow}` : T.shadow,
+      transition: "box-shadow 0.4s, border-color 0.4s",
+    }}>
+      {/* Glow stripe top */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: m.anomalous ? T.danger : cfg.color, opacity: 0.7, borderRadius: "14px 14px 0 0" }}/>
+
+      {m.anomalous && (
+        <div style={{ position: "absolute", top: 8, right: 10 }}>
+          <Pill label="ANOMALY" color={T.danger} T={T} pulse />
+        </div>
+      )}
+
+      <div style={{ color: T.textDim, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "var(--mono)", marginBottom: 10 }}>{cfg.label}</div>
+
+      <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 10 }}>
+        <span style={{ fontSize: 32, fontWeight: 700, color: m.anomalous ? T.danger : cfg.color, fontFamily: "var(--display)", letterSpacing: -1, transition: "color 0.3s" }}>
+          {m.current.toFixed(1)}
+        </span>
+        <span style={{ fontSize: 11, color: T.textDim, fontFamily: "var(--mono)" }}>{cfg.unit}</span>
+      </div>
+
+      {/* Progress track */}
+      <div style={{ background: T.border, borderRadius: 4, height: 3, marginBottom: 12, overflow: "hidden" }}>
+        <div style={{ width: `${pct}%`, height: "100%", background: m.anomalous ? T.danger : cfg.color, borderRadius: 4, transition: "width 0.5s, background 0.3s" }}/>
+      </div>
+
+      <Sparkline data={m.history} color={cfg.color} anomalous={m.anomalous} T={T} />
+
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
+        <span style={{ fontSize: 10, color: T.textDim, fontFamily: "var(--mono)" }}>
+          score <span style={{ color: m.score > 0.5 ? T.danger : T.textDim }}>{(m.score*100).toFixed(0)}%</span>
+        </span>
+        <span style={{ fontSize: 10, color: T.textDim, fontFamily: "var(--mono)" }}>
+          σ {(m.current - m.history.reduce((a,b)=>a+b,0)/m.history.length).toFixed(1)}
+        </span>
+      </div>
+    </div>
   );
 }
 
-function Topology({ topo, st, T, metrics }) {
-  const [sel, setSel] = useState(null);
-  useEffect(() => setSel(null), [topo.id]);
-  const big = topo.id === "small", s = big ? 52 : 30;
-  const pos = Object.fromEntries(topo.nodes.map(n => [n.id, iso(n)]));
-  const xs = Object.values(pos).map(p => p.x), ys = Object.values(pos).map(p => p.y);
-  const pad = 80, x0 = Math.min(...xs) - pad, y0 = Math.min(...ys) - pad - 40;
-  const vb = `${x0} ${y0} ${Math.max(...xs) - Math.min(...xs) + pad * 2} ${Math.max(...ys) - Math.min(...ys) + pad * 2 + 80}`;
-  const list = topo.nodes.filter(n => n.type !== "external");
-  const bad = Object.values(st).filter(v => v === "hijacked").length;
-  const pick = topo.nodes.find(n => n.id === sel);
-  const load = (n, i) => Math.min(99, Math.round(metrics.cpu.current * (0.55 + ((i * 37) % 50) / 100) + (st[n.id] === "hijacked" ? 35 : st[n.id] ? 15 : 0)));
+// ─── Network Graph (shared renderer) ─────────────────────────────────────────
+function NetworkGraph({ topology, deviceStatuses, T }) {
+  const [selected, setSelected]   = useState(null);
+  const [hovered, setHovered]     = useState(null);
+  const [animated, setAnimated]   = useState(true);
+  const [frame, setFrame]         = useState(0);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    setSelected(null);
+  }, [topology.id]);
+
+  useEffect(() => {
+    if (!animated) { cancelAnimationFrame(rafRef.current); return; }
+    const loop = () => { setFrame(f => (f + 1) % 300); rafRef.current = requestAnimationFrame(loop); };
+    rafRef.current = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [animated]);
+
+  const nodes = topology.nodes;
+  const edges = topology.edges;
+
+  // Compute viewBox bounds
+  const xs = nodes.map(n => n.x), ys = nodes.map(n => n.y);
+  const pad = 60;
+  const minX = Math.min(...xs) - pad, minY = Math.min(...ys) - pad;
+  const maxX = Math.max(...xs) + pad, maxY = Math.max(...ys) + pad;
+  const vw = maxX - minX, vh = maxY - minY;
+  const viewBox = `${minX} ${minY} ${vw} ${vh}`;
+
+  const selectedNode = nodes.find(n => n.id === selected);
+  const hijackedIds  = Object.entries(deviceStatuses).filter(([,s])=>s==="hijacked").map(([id])=>id);
+  const breachIds    = Object.entries(deviceStatuses).filter(([,s])=>s==="compromising").map(([id])=>id);
+
   return (
-    <div className="topo">
-      <div className="map">
-        <div className="legend">{[["Secure", C.cyan], ["Breaching", C.amber], ["Compromised", C.red]].map(([l, c]) => <span key={l}><i style={{ background: c }} />{l}</span>)}</div>
-        <svg viewBox={vb} role="group" aria-label={`${topo.subtitle} topology`}>
-          {topo.edges.map(([a, b], i) => {
-            const hot = st[a] === "hijacked" || st[b] === "hijacked", warm = st[a] || st[b];
-            const col = hot ? C.red : warm ? C.amber : C.amber;
-            return <g key={i}><line x1={pos[a].x} y1={pos[a].y} x2={pos[b].x} y2={pos[b].y} stroke={hot ? C.red : C.cyan} opacity=".3" /><line className={"flow" + (hot ? " hot" : "")} x1={pos[a].x} y1={pos[a].y} x2={pos[b].x} y2={pos[b].y} stroke={col} /></g>;
-          })}
-          {[...topo.nodes].sort((a, b) => pos[a.id].y - pos[b.id].y).map(n => {
-            const { x, y } = pos[n.id], status = st[n.id] || "secure", col = statusColor(status, NODE_TYPE_COLORS[n.type]);
+    <div style={{ position: "relative" }}>
+      {/* Toolbar */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 18px", borderBottom: `1px solid ${T.glassBorder}` }}>
+        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          <span style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 13, color: T.textStrong }}>{topology.subtitle}</span>
+          <span style={{ color: T.textDim, fontSize: 11, fontFamily: "var(--mono)" }}>{nodes.length} nodes · {edges.length} links</span>
+        </div>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          {[["Secure", T.accent], ["Breaching", T.warn], ["Compromised", T.danger]].map(([l, c]) => (
+            <div key={l} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: c }}/>
+              <span style={{ fontSize: 10, color: T.textDim, fontFamily: "var(--mono)" }}>{l}</span>
+            </div>
+          ))}
+          <button onClick={() => setAnimated(a => !a)} style={{
+            background: animated ? T.accentGlow : "transparent",
+            border: `1px solid ${animated ? T.accent : T.glassBorder}`,
+            color: animated ? T.accent : T.textDim,
+            borderRadius: 8, padding: "4px 12px", cursor: "pointer",
+            fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700,
+          }}>{animated ? "PAUSE" : "ANIMATE"}</button>
+        </div>
+      </div>
+
+      {/* SVG Canvas */}
+      <div style={{ padding: "8px 0" }}>
+        <svg viewBox={viewBox} style={{ width: "100%", height: "auto", maxHeight: 640, display: "block" }}>
+          <defs>
+            <filter id="glow-safe"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="glow-hot"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L6,3 z" fill={T.glassBorder}/>
+            </marker>
+          </defs>
+
+          {/* Edges */}
+          {edges.map(([a, b], ei) => {
+            const nA = nodes.find(n => n.id === a), nB = nodes.find(n => n.id === b);
+            if (!nA || !nB) return null;
+            const attacked = hijackedIds.includes(a) || hijackedIds.includes(b);
+            const breaching = breachIds.includes(a) || breachIds.includes(b);
+            const col = attacked ? T.danger : breaching ? T.warn : T.glassBorder;
+            const t = animated ? ((frame * 0.01 + ei * 0.13) % 1) : 0;
+            const px = nA.x + (nB.x - nA.x) * t;
+            const py = nA.y + (nB.y - nA.y) * t;
             return (
-              <g key={n.id} className="node" tabIndex={0} role="button" aria-label={`${n.label}, ${statusLabel[status]}`} onClick={() => setSel(sel === n.id ? null : n.id)} onKeyDown={e => e.key === "Enter" && setSel(sel === n.id ? null : n.id)}>
-                {status !== "secure" && <ellipse className="ring" cx={x} cy={y + s * 0.25} rx={s * 1.2} ry={s * 0.6} fill="none" stroke={col} strokeWidth="2" />}
-                <polygon points={`${x},${y - s * 0.5 + s * 0.25} ${x + s},${y + s * 0.25} ${x},${y + s * 0.5 + s * 0.25} ${x - s},${y + s * 0.25}`} fill={col} fillOpacity={sel === n.id ? 0.4 : 0.16} stroke={col} strokeOpacity=".7" />
-                <Pillar x={x} y={y - 4} s={s} h={PILLAR[n.type] * (big ? 1.5 : 1)} col={col} />
-                <text x={x} y={y + s * 0.5 + s * 0.25 + 15} textAnchor="middle" fontSize={big ? 15 : 11.5} fill="#cfe3f1" fontWeight="500">{n.label}</text>
+              <g key={ei}>
+                <line x1={nA.x} y1={nA.y} x2={nB.x} y2={nB.y}
+                  stroke={col} strokeWidth={attacked ? 2 : 1} opacity={attacked ? 0.9 : 0.45}
+                  strokeDasharray={attacked ? "5 3" : "none"}/>
+                {animated && (
+                  <circle cx={px} cy={py} r={attacked ? 3.5 : 2}
+                    fill={attacked ? T.danger : T.accent} opacity={0.9}
+                    filter={attacked ? "url(#glow-hot)" : "url(#glow-safe)"}/>
+                )}
+              </g>
+            );
+          })}
+
+          {/* Nodes */}
+          {nodes.map(n => {
+            const status = deviceStatuses[n.id] || "secure";
+            const col = status === "hijacked" ? T.danger : status === "compromising" ? T.warn : (NODE_TYPE_COLORS[n.type] || T.accent);
+            const isHov = hovered === n.id;
+            const isSel = selected === n.id;
+            const r = topology.id === "small" ? 36 : 26;
+            const pulse = animated && status !== "secure";
+            return (
+              <g key={n.id} style={{ cursor: "pointer" }}
+                onClick={() => setSelected(selected === n.id ? null : n.id)}
+                onMouseEnter={() => setHovered(n.id)}
+                onMouseLeave={() => setHovered(null)}>
+                {pulse && (
+                  <circle cx={n.x} cy={n.y} r={r + 8 + (frame % 40) * 0.4} fill="none"
+                    stroke={col} strokeWidth="1" opacity={Math.max(0, 0.5 - (frame % 40) / 80)}/>
+                )}
+                {(isHov || isSel) && (
+                  <circle cx={n.x} cy={n.y} r={r + 10} fill={col} opacity="0.07"/>
+                )}
+                <circle cx={n.x} cy={n.y} r={r}
+                  fill={T.glass} stroke={col} strokeWidth={isSel ? 2.5 : 1.5}
+                  filter={status !== "secure" ? "url(#glow-hot)" : isHov ? "url(#glow-safe)" : "none"}/>
+                <text x={n.x} y={n.y + 1} textAnchor="middle" dominantBaseline="middle"
+                  fontSize={topology.id === "small" ? 12 : 10} fontWeight="700"
+                  fill={col} fontFamily="var(--mono)">{NODE_TYPE_ICON[n.type] || "N"}</text>
+                <text x={n.x} y={n.y + r + 14} textAnchor="middle" fontSize={topology.id === "small" ? 11 : 10}
+                  fill={T.text} fontFamily="var(--body)" fontWeight="600">{n.label}</text>
+                {n.ip && topology.id === "small" && (
+                  <text x={n.x} y={n.y + r + 26} textAnchor="middle" fontSize="9"
+                    fill={T.textDim} fontFamily="var(--mono)">{n.ip}</text>
+                )}
+                {status !== "secure" && (
+                  <circle cx={n.x + r - 4} cy={n.y - r + 4} r={7} fill={col}/>
+                )}
               </g>
             );
           })}
         </svg>
       </div>
-      <div className="side">
-        <div className="card counts">
-          <div><b>{topo.nodes.length}</b><span>Nodes</span></div>
-          <div><b>{topo.edges.length}</b><span>Links</span></div>
-          <div><b style={{ color: bad ? C.red : undefined }}>{bad}</b><span>Compromised</span></div>
-        </div>
-        <div className="card">
-          <h2>{pick ? pick.label : "Hosts"}<small>{pick ? pick.ip : `${list.length} monitored`}</small></h2>
-          <div style={{ maxHeight: 360, overflow: "auto" }}>
-            {list.map((n, i) => {
-              const s2 = st[n.id] || "secure", c = statusColor(s2, C.cyan);
-              return (
-                <button key={n.id} className="host" aria-pressed={sel === n.id} style={{ "--c": c }} onClick={() => setSel(sel === n.id ? null : n.id)}>
-                  <span>{n.label}<br /><small>{n.ip}</small></span><em>{statusLabel[s2]}</em>
-                  <div className="bar"><i style={{ width: `${load(n, i)}%`, background: c }} /></div>
-                </button>
-              );
-            })}
+
+      {/* Node detail card */}
+      {selectedNode && (
+        <div style={{ position: "absolute", top: 60, right: 16, width: 220, ...glass(T, { borderRadius: 12, padding: "14px 16px" }), border: `1px solid ${T.borderAccent}`, zIndex: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+            <div>
+              <div style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 13, color: T.textStrong }}>{selectedNode.label}</div>
+              <div style={{ fontSize: 10, color: NODE_TYPE_COLORS[selectedNode.type] || T.accent, fontFamily: "var(--mono)", marginTop: 2 }}>{selectedNode.type.toUpperCase()}</div>
+            </div>
+            <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: T.textDim, cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 0 }}>×</button>
           </div>
+          {[
+            { l: "Status", v: deviceStatuses[selectedNode.id] === "hijacked" ? "Compromised" : deviceStatuses[selectedNode.id] === "compromising" ? "Breaching" : "Secure", c: deviceStatuses[selectedNode.id] === "hijacked" ? T.danger : deviceStatuses[selectedNode.id] === "compromising" ? T.warn : T.accent },
+            { l: "IP Address", v: selectedNode.ip || "—" },
+            { l: "Links", v: edges.filter(e => e.includes(selectedNode.id)).length },
+          ].map(({ l, v, c }) => (
+            <div key={l} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={{ fontSize: 11, color: T.textDim }}>{l}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: c || T.textStrong, fontFamily: "var(--mono)" }}>{v}</span>
+            </div>
+          ))}
         </div>
+      )}
+
+      {/* Footer stats */}
+      <div style={{ display: "flex", gap: 24, padding: "10px 18px", borderTop: `1px solid ${T.glassBorder}` }}>
+        {[
+          { l: "Nodes", v: nodes.length, c: T.accent },
+          { l: "Links", v: edges.length, c: T.accent },
+          { l: "Compromised", v: Object.values(deviceStatuses).filter(s=>s==="hijacked").length, c: T.danger },
+          { l: "Secure", v: nodes.length - Object.values(deviceStatuses).filter(s=>s!=="secure").length, c: T.accent },
+        ].map(({ l, v, c }) => (
+          <div key={l}>
+            <div style={{ fontSize: 9, color: T.textDim, letterSpacing: 0.5, fontFamily: "var(--mono)" }}>{l}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: c, fontFamily: "var(--display)" }}>{v}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-const MEANING = {
-  cpu: "Sudden CPU spikes often come from cryptominers, ransomware encrypting files, or a flood of requests the server is forced to process.",
-  mem: "Memory climbing fast can mean malware loading payloads, ransomware staging files, or buffers filling up under attack.",
-  latency: "Slow responses are typical when a DDoS saturates the network, or when traffic is being intercepted and relayed through an attacker (man-in-the-middle).",
-  rps: "A jump in requests per second is the classic sign of a DDoS flood or automated scanning tools. A sharp drop can mean the service is failing.",
-  errors: "A rising error rate suggests probing, such as malformed requests from SQL injection tools, or services failing under load.",
-  disk: "Heavy disk activity is typical of ransomware encrypting files, or of large amounts of data being copied out.",
-};
-const LIMIT = 1.8; // default visual reference; adaptive limit is controlled in App
-
-function Detail({ id, setId, metrics, attack, onClose }) {
-  useEffect(() => { const k = e => e.key === "Escape" && onClose(); addEventListener("keydown", k); return () => removeEventListener("keydown", k); }, [onClose]);
-  const cfg = METRICS_CONFIG.find(c => c.id === id), m = metrics[id], h = m.history, n = h.length;
-  const mean = h.reduce((a, b) => a + b, 0) / n, sd = Math.sqrt(h.reduce((a, b) => a + (b - mean) ** 2, 0) / n) || 1;
-  const lo = Math.min(...h), hi = Math.max(...h), a = Math.min(lo, mean - 3 * sd), b = Math.max(hi, mean + 3 * sd);
-  const y = v => 196 - ((v - a) / (b - a)) * 186, col = m.anomalous ? C.red : cfg.color, z = (m.current - mean) / sd;
-  const pts = h.map((v, i) => `${(i / (n - 1)) * 600},${y(v).toFixed(1)}`).join(" ");
-  const f = v => v.toFixed(cfg.unit === "%" || cfg.id === "rps" ? 1 : 0);
-  const stats = [["Now", f(m.current)], ["Average", f(mean)], ["Peak", f(hi)], ["Low", f(lo)], ["Std dev", sd.toFixed(1)], ["Anomaly score", `${(m.score * 100).toFixed(0)}%`]];
-  return (
-    <div className="veil mid" onClick={onClose}>
-      <div className="dlg" role="dialog" aria-label={`${cfg.label} overview`} onClick={e => e.stopPropagation()}>
-        <div className="mlist">
-          {METRICS_CONFIG.map(c => { const x = metrics[c.id]; return (
-            <button key={c.id} aria-pressed={c.id === id} style={{ "--c": x.anomalous ? C.red : c.color }} onClick={() => setId(c.id)}>
-              <span>{c.label}</span><b>{x.current.toFixed(1)}<small>{c.unit}</small></b><div className="bar"><i style={{ width: `${x.score * 100}%` }} /></div>
-            </button>); })}
-        </div>
-        <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-            <div><h2 className="dh">{cfg.label}</h2>
-              <p style={{ color: m.anomalous ? C.red : C.mint, fontWeight: 500 }}>{m.anomalous ? `Off baseline: ${Math.abs(z).toFixed(1)}σ ${z > 0 ? "above" : "below"} the 50-sample average` : "Within baseline"}</p></div>
-            <button className="btn" onClick={onClose}>Close</button>
-          </div>
-          <div className="chart">
-            <svg viewBox="0 0 600 200" preserveAspectRatio="none" role="img" aria-label={`${cfg.label} over the last ${n} samples`}>
-              <rect x="0" y={y(mean + LIMIT * sd)} width="600" height={Math.max(0, y(mean - LIMIT * sd) - y(mean + LIMIT * sd))} fill={C.cyan} opacity=".08" />
-              <line x1="0" x2="600" y1={y(mean)} y2={y(mean)} stroke={C.cyan} strokeDasharray="4 4" opacity=".5" vectorEffect="non-scaling-stroke" />
-              <polygon points={`0,200 ${pts} 600,200`} fill={col} opacity=".14" />
-              <polyline points={pts} fill="none" stroke={col} strokeWidth="2" vectorEffect="non-scaling-stroke" />
-            </svg>
-            <span className="ax" style={{ top: 4 }}>{f(b)}</span><span className="ax" style={{ bottom: 4 }}>{f(a)}</span>
-          </div>
-          <p className="cap">Shaded band is the normal range (average ± 1.8σ), the limit the detector uses. Dashed line is the average.</p>
-          <div className="why" style={{ "--c": m.anomalous ? C.red : C.mint }}>
-            <h3>{m.anomalous ? "Why this is flagged" : "Why this looks normal"}</h3>
-            <ul>
-              <li><b>The rule.</b> The detector compares each reading with the last {n} readings. {cfg.label} is {f(m.current)}{cfg.unit} against an average of {f(mean)}{cfg.unit}, which is {Math.abs(z).toFixed(1)}σ {z > 0 ? "above" : "below"} it. {m.anomalous ? `Anything past ${LIMIT}σ is marked suspicious.` : `That is inside the ${LIMIT}σ limit.`}</li>
-              <li><b>{m.anomalous ? "What it can mean." : "What to watch for."}</b> {MEANING[id]}</li>
-              {attack && attack.metrics[id] !== undefined && <li><b>Matches the live simulation.</b> {attack.name} pushes {cfg.label.toLowerCase()} toward {attack.metrics[id]}{cfg.unit}. The Overview headline shows the current phase.</li>}
-              {m.anomalous && !(attack && attack.metrics[id] !== undefined) && <li><b>No attack is simulated on this metric,</b> so this is a natural fluctuation or an injected spike. A real spike would warrant checking the hosts behind it.</li>}
-            </ul>
-          </div>
-          <div className="stats">{stats.map(([l, v]) => <div key={l}><span>{l}</span><b>{v}<small>{l === "Anomaly score" || l === "Std dev" ? "" : cfg.unit}</small></b></div>)}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Drawer({ onClose, onLaunch }) {
+// ─── Attack Modal ─────────────────────────────────────────────────────────────
+function AttackModal({ onClose, onLaunch, T }) {
   const [sel, setSel] = useState(null);
   return (
-    <div className="veil" onClick={onClose}>
-      <aside className="drawer" role="dialog" aria-label="Simulate attack" onClick={e => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between" }}><h2>Simulate an attack</h2><button className="btn" onClick={onClose}>Close</button></div>
-        <p>Injects synthetic telemetry only. No real systems are touched.</p>
-        {ATTACK_TYPES.map(a => (
-          <button key={a.id} className="opt" style={{ "--c": a.color }} aria-pressed={sel === a.id} onClick={() => setSel(sel === a.id ? null : a.id)}>
-            <b>{a.name}</b><p>{a.description}</p>
-            {sel === a.id && <ol>{a.phases.map(p => <li key={p}>{p}</li>)}</ol>}
+    <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ ...glass(T, { borderRadius: 18, width: "100%", maxWidth: 680, maxHeight: "88vh", overflowY: "auto" }), border: `1px solid ${T.danger}35` }}>
+        <div style={{ padding: "20px 24px 16px", borderBottom: `1px solid ${T.glassBorder}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 18, color: T.danger }}>Attack Simulator</div>
+            <div style={{ fontSize: 11, color: T.textDim, marginTop: 3 }}>Inject synthetic attack telemetry — no real systems affected</div>
+          </div>
+          <button onClick={onClose} style={{
+            background: T.glass, border: `1px solid ${T.glassBorder}`, color: T.textDim,
+            borderRadius: 10, width: 34, height: 34, cursor: "pointer", fontSize: 20,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>×</button>
+        </div>
+
+        <div style={{ padding: 24 }}>
+          <div style={{ background: T.warnGlow, border: `1px solid ${T.warn}30`, borderRadius: 10, padding: "10px 14px", marginBottom: 20, fontSize: 11, color: T.warn, lineHeight: 1.5 }}>
+            Simulation mode — synthetic telemetry only. All events are logged to the alert stream.
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+            {ATTACK_TYPES.map(a => (
+              <div key={a.id} onClick={() => setSel(a.id === sel ? null : a.id)} style={{
+                background: sel === a.id ? a.color + "12" : T.glassHover,
+                border: `1px solid ${sel === a.id ? a.color + "60" : T.glassBorder}`,
+                borderRadius: 12, padding: "14px 16px", cursor: "pointer", transition: "all 0.2s",
+                boxShadow: sel === a.id ? `0 0 20px ${a.color}18` : "none",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: a.color, flexShrink: 0 }}/>
+                  <span style={{ color: sel === a.id ? a.color : T.textStrong, fontWeight: 700, fontSize: 13, fontFamily: "var(--display)" }}>{a.name}</span>
+                </div>
+                <div style={{ fontSize: 11, color: T.textDim, lineHeight: 1.5 }}>{a.description}</div>
+                {sel === a.id && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${a.color}20` }}>
+                    <div style={{ fontSize: 10, color: a.color, fontWeight: 700, marginBottom: 6, letterSpacing: 0.5, fontFamily: "var(--mono)" }}>ATTACK PHASES</div>
+                    {a.phases.map((p, i) => (
+                      <div key={i} style={{ fontSize: 11, color: T.text, marginBottom: 4, display: "flex", gap: 6 }}>
+                        <span style={{ color: a.color, minWidth: 14, fontWeight: 700, fontFamily: "var(--mono)" }}>{i+1}.</span>{p}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <button disabled={!sel} onClick={() => sel && onLaunch(ATTACK_TYPES.find(a => a.id === sel))} style={{
+            width: "100%", padding: "13px", borderRadius: 12, cursor: sel ? "pointer" : "not-allowed",
+            background: sel ? T.danger : T.glassBorder,
+            color: sel ? "#fff" : T.textDim,
+            border: "none", fontFamily: "var(--display)", fontWeight: 700, fontSize: 14,
+            transition: "all 0.2s", boxShadow: sel ? `0 4px 20px ${T.dangerGlow}` : "none",
+          }}>
+            {sel ? `Launch ${ATTACK_TYPES.find(a=>a.id===sel)?.name}` : "Select an attack type"}
           </button>
-        ))}
-        <button className="btn go" style={{ width: "100%", padding: 12, marginTop: 8, opacity: sel ? 1 : 0.4 }} disabled={!sel} onClick={() => onLaunch(ATTACK_TYPES.find(a => a.id === sel))}>
-          {sel ? `Launch ${ATTACK_TYPES.find(a => a.id === sel).name}` : "Pick a scenario"}
-        </button>
-      </aside>
+        </div>
+      </div>
     </div>
   );
 }
 
-export default function App() {
-  const [metrics, setMetrics] = useState(initMetrics);
-  const [alerts, setAlerts] = useState([]);
-  const [dismissed, setDismissed] = useState(new Set());
-  const [running, setRunning] = useState(true);
-  const [burst, setBurst] = useState(false);
-  const [tab, setTab] = useState("overview");
-  const [drawer, setDrawer] = useState(false);
-  const [detail, setDetail] = useState(null);
-  const [attack, setAttack] = useState(null);
-  const [phase, setPhase] = useState(-1);
-  const [st, setSt] = useState({});
-  const [toasts, setToasts] = useState([]);
-  const [topoKey, setTopoKey] = useState("college");
-  const [threshold, setThreshold] = useState(1.8);
-  // Analyst labels are kept separately from detector output: an alert is not a confirmed attack
-  // until an analyst reviews it. This demo stores feedback in React state (not a backend).
-  const [feedback, setFeedback] = useState({});
-  const [responseLog, setResponseLog] = useState([]);
-  const topo = topoKey === "small" ? TOPOLOGY_SMALL : TOPOLOGY_COLLEGE;
-  const targets = topo.nodes.filter(n => n.type !== "external");
-  const timers = useRef([]), ids = useRef(0);
+// ─── Theme picker ─────────────────────────────────────────────────────────────
+function ThemePicker({ current, onChange, T }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: "relative" }}>
+      <button onClick={() => setOpen(o => !o)} style={{
+        ...glass(T, { borderRadius: 8, padding: "6px 12px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", border: `1px solid ${T.glassBorder}` }),
+        fontFamily: "var(--display)", fontWeight: 600, fontSize: 11, color: T.text,
+        background: "none",
+      }}>
+        <div style={{ width: 10, height: 10, borderRadius: "50%", background: THEMES[current].accent }}/>
+        {THEMES[current].name}
+        <span style={{ color: T.textDim, fontSize: 9 }}>▾</span>
+      </button>
+      {open && (
+        <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, ...glass(T, { borderRadius: 12, padding: 8, minWidth: 140 }), zIndex: 200 }}>
+          {Object.entries(THEMES).map(([key, theme]) => (
+            <div key={key} onClick={() => { onChange(key); setOpen(false); }} style={{
+              display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 8, cursor: "pointer",
+              background: current === key ? T.accentGlow : "transparent",
+              color: current === key ? T.accent : T.text,
+              fontFamily: "var(--display)", fontWeight: current === key ? 700 : 500, fontSize: 12,
+            }}>
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: theme.accent, flexShrink: 0 }}/>
+              {theme.name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
-  const toast = useCallback((title, message, color) => {
-    const id = ++ids.current;
-    setToasts(t => [{ id, title, message, color }, ...t].slice(0, 3));
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4800);
+// ─── MAIN ─────────────────────────────────────────────────────────────────────
+export default function App() {
+  const [themeKey, setThemeKey]   = useState("midnight");
+  const T = THEMES[themeKey];
+
+  const [metrics, setMetrics]       = useState(initMetrics);
+  const [alerts, setAlerts]         = useState([]);
+  const [dismissed, setDismissed]   = useState(new Set());
+  const [running, setRunning]       = useState(true);
+  const [burst, setBurst]           = useState(false);
+  const [modelInfo, setModelInfo]   = useState({ processed: 0, total: 0, accuracy: 97.4 });
+  const [tab, setTab]               = useState("dashboard");
+  const [showModal, setShowModal]   = useState(false);
+  const [activeAttack, setActiveAttack]     = useState(null);
+  const [attackPhase, setAttackPhase]       = useState(-1);
+  const [deviceStatuses, setDeviceStatuses] = useState({});
+  const [toasts, setToasts]         = useState([]);
+  const [topoKey, setTopoKey]       = useState("small");
+  const topology = topoKey === "small" ? TOPOLOGY_SMALL : TOPOLOGY_COLLEGE;
+  const targets  = topology.nodes.filter(n => n.type !== "external");
+
+  const intervalRef = useRef(null);
+  const timerRefs   = useRef([]);
+  const alertId     = useRef(0);
+  const toastId     = useRef(0);
+
+  const pushToast = useCallback((title, message, color) => {
+    const id = ++toastId.current;
+    setToasts(t => [{ id, title, message, color }, ...t].slice(0, 4));
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 5000);
   }, []);
-  const push = useCallback(o => setAlerts(a => [{ id: ++ids.current, time: clock(), ...o }, ...a].slice(0, 80)), []);
+
+  const pushAlert = useCallback(obj => setAlerts(a => [obj, ...a].slice(0, 80)), []);
 
   const tick = useCallback(() => {
     setMetrics(prev => {
-      const next = {}, na = [], ov = attack?.metrics || {};
+      const next = {};
+      const na = [];
+      const ov = activeAttack?.metrics || {};
       for (const cfg of METRICS_CONFIG) {
-        const p = prev[cfg.id], cl = Math.max(cfg.min, Math.min(cfg.max, genMetric(p.current, burst, ov[cfg.id])));
-        const hist = [...p.history.slice(-59), cl], score = anomalyScore(cl, hist), anomalous = score > Math.max(0.2, (threshold / 4));
+        const p = prev[cfg.id];
+        const raw = genMetric(p.current, burst, ov[cfg.id]);
+        const cl  = Math.max(cfg.min, Math.min(cfg.max, raw));
+        const hist = [...p.history.slice(-59), cl];
+        const score = anomalyScore(cl, hist);
+        const anomalous = score > 0.45;
         next[cfg.id] = { current: cl, history: hist, score, anomalous };
-        if (anomalous && score > 0.5 && Math.random() > 0.7) na.push({ id: ++ids.current, type: "metric", metric: cfg.label, score, value: `${cl.toFixed(1)}${cfg.unit}`, time: clock() });
+        if (anomalous && score > 0.5 && Math.random() > 0.7)
+          na.push({ id: ++alertId.current, type: "metric", metric: cfg.label, score, value: `${cl.toFixed(1)}${cfg.unit}`, time: new Date().toLocaleTimeString() });
       }
-      if (na.length) setAlerts(a => [...na, ...a].slice(0, 80));
+      if (na.length) {
+        setAlerts(a => [...na, ...a].slice(0, 80));
+        setModelInfo(m => ({ ...m, processed: m.processed + METRICS_CONFIG.length, total: m.total + na.length, accuracy: +(97 + Math.random() * 1.5).toFixed(1) }));
+      } else {
+        setModelInfo(m => ({ ...m, processed: m.processed + METRICS_CONFIG.length }));
+      }
       return next;
     });
-  }, [burst, attack]);
+  }, [burst, activeAttack]);
 
-  useEffect(() => { if (!running) return; const i = setInterval(tick, 800); return () => clearInterval(i); }, [running, tick]);
+  useEffect(() => {
+    if (running) intervalRef.current = setInterval(tick, 800);
+    else clearInterval(intervalRef.current);
+    return () => clearInterval(intervalRef.current);
+  }, [running, tick]);
 
-  const clear = () => { timers.current.forEach(clearTimeout); timers.current = []; };
-  const launch = useCallback(a => {
-    clear(); setDrawer(false); setAttack(a); setPhase(0); setSt({});
-    toast(`${a.name} detected`, `${targets.length} hosts targeted`, a.color);
-    a.phases.forEach((p, i) => timers.current.push(setTimeout(() => {
-      setPhase(i); push({ type: "attack", attackName: a.name, severity: i >= 3 ? "CRITICAL" : "HIGH", message: p });
-      toast(`Phase ${i + 1} of ${a.phases.length}`, p, i >= 3 ? C.red : a.color);
-    }, i * 3800)));
-    const step = Math.min(2200, Math.floor(18000 / targets.length));
-    [...targets].sort(() => Math.random() - 0.5).forEach((d, i) => {
-      timers.current.push(setTimeout(() => { setSt(s => ({ ...s, [d.id]: "compromising" })); }, 1500 + i * step));
-      timers.current.push(setTimeout(() => {
-        setSt(s => ({ ...s, [d.id]: "hijacked" }));
-        push({ type: "attack", attackName: a.name, severity: "CRITICAL", message: `${d.label} (${d.ip}) compromised. Attacker has root access.` });
-        toast("Host compromised", `${d.label} · ${d.ip}`, C.red);
-      }, 1500 + i * step + Math.min(1500, step)));
+  const launchAttack = useCallback(attack => {
+    setShowModal(false);
+    setActiveAttack(attack);
+    setAttackPhase(0);
+    setDeviceStatuses({});
+    timerRefs.current.forEach(clearTimeout);
+    timerRefs.current = [];
+
+    pushToast(`${attack.name} Detected`, `Intrusion confirmed — ${targets.length} nodes targeted`, attack.color);
+
+    attack.phases.forEach((_, i) => {
+      const t = setTimeout(() => {
+        setAttackPhase(i);
+        pushAlert({ id: ++alertId.current, type: "attack", attackName: attack.name, severity: i >= 3 ? "CRITICAL" : "HIGH", message: attack.phases[i], time: new Date().toLocaleTimeString() });
+        pushToast(`Phase ${i+1} — ${attack.name}`, attack.phases[i], i >= 3 ? T.danger : attack.color);
+      }, i * 3800);
+      timerRefs.current.push(t);
     });
-  }, [targets, toast, push]);
 
-  const resolve = () => {
-    clear(); setAttack(null); setPhase(-1); setSt({});
-    toast("Threat contained", "Nodes restored and firewall rules updated.", C.mint);
-    push({ type: "attack", attackName: "Response", severity: "MEDIUM", message: "Incident contained. Sessions revoked and forensic snapshot saved." });
-  };
-  const switchTopo = k => { if (k === topoKey) return; clear(); setAttack(null); setPhase(-1); setSt({}); setTopoKey(k); };
+    const step = Math.min(2200, Math.floor(18000 / targets.length));
+    [...targets].sort(() => Math.random() - 0.5).forEach((dev, i) => {
+      const t1 = setTimeout(() => {
+        setDeviceStatuses(s => ({ ...s, [dev.id]: "compromising" }));
+        pushToast("Lateral Movement", `Breaching ${dev.label} — ${dev.ip}`, T.warn);
+      }, 1500 + i * step);
+      const t2 = setTimeout(() => {
+        setDeviceStatuses(s => ({ ...s, [dev.id]: "hijacked" }));
+        pushAlert({ id: ++alertId.current, type: "attack", attackName: attack.name, severity: "CRITICAL", message: `${dev.label} (${dev.ip}) fully compromised — root access obtained`, time: new Date().toLocaleTimeString() });
+        pushToast("Host Compromised", `${dev.label} at ${dev.ip} is under attacker control`, T.danger);
+      }, 1500 + i * step + Math.min(1500, step));
+      timerRefs.current.push(t1, t2);
+    });
+  }, [pushToast, pushAlert, T, targets]);
 
-  const vals = Object.values(metrics), off = vals.filter(m => m.anomalous).length;
-  const egressHistory = metrics.egress.history;
-  const cumulativeEgress = egressHistory.slice(-15).reduce((sum, value) => sum + value, 0);
-  const egressTrend = egressHistory.length > 1 ? egressHistory.at(-1) - egressHistory.at(-15) : 0;
-  const slowExfilSuspected = !!(attack?.id === "low-slow-exfil" && cumulativeEgress > 250) || (egressTrend > 3 && cumulativeEgress > 250);
-  const reviewed = Object.values(feedback).filter(x => x.status !== "needs-review");
-  const falsePositiveCount = reviewed.filter(x => x.status === "false-positive").length;
-  const confirmedCount = reviewed.filter(x => x.status === "confirmed-threat").length;
-  const pendingCount = alerts.length - reviewed.length;
-  const fpRate = reviewed.length ? Math.round(falsePositiveCount / reviewed.length * 100) : 0;
-  const precision = reviewed.length ? Math.round(confirmedCount / reviewed.length * 100) : 0;
-  const classifyAlert = (id, status, reason) => setFeedback(prev => ({
-    ...prev, [id]: { status, reason, reviewedAt: clock() }
-  }));
-  const explainAlert = a => {
-    const metric = (a.metric || "network activity").toLowerCase();
-    if (metric.includes("outbound")) return "Outbound volume deviated from its recent baseline; verify destination and whether a backup or upload was scheduled.";
-    if (metric.includes("error")) return "Error rate rose above its recent pattern; check deployments, retries and service health before treating it as malicious.";
-    if (metric.includes("latency")) return "Latency deviated from the recent baseline; congestion or maintenance may explain it.";
-    return "This metric deviated from its recent baseline. Correlate host, destination, time and related signals before escalating.";
+  const resolveAttack = useCallback(() => {
+    timerRefs.current.forEach(clearTimeout);
+    timerRefs.current = [];
+    setActiveAttack(null);
+    setAttackPhase(-1);
+    setDeviceStatuses({});
+    pushToast("Threat Contained", "All nodes restored. Firewall rules updated. Incident logged.", T.accent);
+    pushAlert({ id: ++alertId.current, type: "attack", attackName: "RESPONSE", severity: "MEDIUM", message: "Incident contained — sessions revoked, firewall updated, forensic snapshot captured.", time: new Date().toLocaleTimeString() });
+  }, [pushToast, pushAlert, T]);
+
+  const switchTopology = id => {
+    if (id === topoKey) return;
+    timerRefs.current.forEach(clearTimeout);
+    timerRefs.current = [];
+    setActiveAttack(null);
+    setAttackPhase(-1);
+    setDeviceStatuses({});
+    setTopoKey(id);
   };
-  const bad = Object.values(st).filter(v => v === "hijacked").length;
-  const threat = Math.min(100, Math.round(Math.max((vals.reduce((a, m) => a + m.score, 0) / vals.length) * 150, (bad / targets.length) * 100)));
-  const visible = alerts.filter(a => !dismissed.has(a.id));
-  const dismiss = id => setDismissed(d => new Set([...d, id]));
-  const NavBtn = ({ id, label, children, badge }) => (
-    <button className="nav" aria-current={tab === id} onClick={() => setTab(id)}>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">{children}</svg>{label}{badge > 0 && <b>{badge > 99 ? "99+" : badge}</b>}
-    </button>
-  );
+
+  const anomalousCount = Object.values(metrics).filter(m => m.anomalous).length;
+  const hijackedCount  = Object.values(deviceStatuses).filter(s => s === "hijacked").length;
+  const visible        = alerts.filter(a => !dismissed.has(a.id));
 
   return (
-    <div className={attack ? "attack" : ""} style={{ minHeight: "100%" }}>
-      <div className="stage" style={{ "--bg": `url(${bg})` }} />
-      <div className="toasts" aria-live="polite">{toasts.map(t => <div key={t.id} className="toast" style={{ "--c": t.color }}><b>{t.title}</b><p>{t.message}</p></div>)}</div>
-      {detail && <Detail id={detail} setId={setDetail} metrics={metrics} attack={attack} onClose={() => setDetail(null)} />}
-      {drawer && <Drawer onClose={() => setDrawer(false)} onLaunch={launch} />}
-      <div className="shell">
-        <nav className="rail" aria-label="Views">
-          <div className="mark"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.6" fill={attack ? C.red : C.cyan} /><circle cx="8" cy="8" r="6.4" stroke={attack ? C.red : C.cyan} strokeDasharray="2 2" /></svg></div>
-          <NavBtn id="overview" label="Overview"><path d="M3 12a9 9 0 0 1 18 0M12 12l4-4M5 19h14" /></NavBtn>
-          <NavBtn id="network" label="Topology"><path d="M12 4l7 4v8l-7 4-7-4V8z M12 4v16M5 8l14 8M19 8L5 16" /></NavBtn>
-          <NavBtn id="resilience" label="Resilience"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7zM8 12l2.5 2.5L16 9" /></NavBtn>
-          <NavBtn id="alerts" label="Alerts" badge={visible.length}><path d="M6 17V11a6 6 0 0 1 12 0v6l2 2H4zM10 21h4" /></NavBtn>
-        </nav>
-        <main>
-          <header className="top">
-            <div className="brand">ANOMALYWATCH<span>{topo.subtitle}</span></div>
-            <div className="acts">
-              <button className="btn" onClick={() => setRunning(r => !r)}>{running ? "Pause feed" : "Resume feed"}</button>
-              <button className="btn" onClick={() => { setBurst(true); setTimeout(() => setBurst(false), 5000); }}>Inject spike</button>
-              <button className={"btn " + (attack ? "hot live" : "go")} onClick={() => setDrawer(true)}>{attack ? "Attack active" : "Simulate attack"}</button>
-            </div>
-          </header>
+    <div style={{
+      fontFamily: "var(--body)",
+      background: T.bg, minHeight: "100vh", color: T.text,
+      transition: "background 0.5s",
+    }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
+        :root {
+          --body: 'DM Sans', system-ui, sans-serif;
+          --display: 'Sora', sans-serif;
+          --mono: 'JetBrains Mono', monospace;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: ${T.bgSolid}; }
+        @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:0.35} }
+        @keyframes toastIn  { from{opacity:0;transform:translateX(16px) scale(0.97)} to{opacity:1;transform:none} }
+        @keyframes fadeUp   { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+        @keyframes glitch   { 0%,100%{transform:none} 30%{transform:translate(-1px,0.5px)} 70%{transform:translate(1px,-0.5px)} }
+        ::-webkit-scrollbar { width: 4px }
+        ::-webkit-scrollbar-track { background: transparent }
+        ::-webkit-scrollbar-thumb { background: ${T.glassBorder}; border-radius: 4px }
+      `}</style>
 
-          {tab === "overview" && <>
-            <section className="hero">
-              <div>
-                <h1>{attack ? `${attack.name} in progress` : off ? `${off} ${off === 1 ? "signal is" : "signals are"} off baseline` : "Network is within baseline"}</h1>
-                <p>{attack ? attack.phases[Math.max(phase, 0)] : "Six live streams are scored against a rolling 50-sample window. Anything beyond the threshold lands in the feed."}</p>
-                {attack && <>
-                  <div className="phase" aria-label={`Phase ${phase + 1} of ${attack.phases.length}`}>{attack.phases.map((_, i) => <i key={i} style={{ background: i <= phase ? attack.color : undefined }} />)}</div>
-                  <button className="btn go" style={{ marginTop: 16 }} onClick={resolve}>Contain and resolve</button>
-                </>}
-              </div>
-              <Gauge value={threat} />
-            </section>
-            <div className="grid">
-              <div className="signals">{METRICS_CONFIG.map(c => <Signal key={c.id} cfg={c} m={metrics[c.id]} onOpen={() => setDetail(c.id)} />)}</div>
-              <div className="side">
-                <div className="card"><h2>Live feed<small>{visible.length} alerts</small></h2>
-                  <div className="feed">{visible.length ? visible.slice(0, 10).map(a => <AlertRow key={a.id} a={a} onDismiss={dismiss} />) : <div className="empty">Nothing off baseline. Alerts appear here as they fire.</div>}</div></div>
-                <div className="card"><h2>Anomaly scores</h2>
-                  <div className="bars">{METRICS_CONFIG.map(c => { const s = metrics[c.id].score; return <div key={c.id} style={{ "--c": s > 0.7 ? C.red : s > 0.4 ? C.amber : c.color }}><div><span>{c.label}</span><span>{(s * 100).toFixed(0)}%</span></div><div className="bar"><i style={{ width: `${s * 100}%` }} /></div></div>; })}</div></div>
-              </div>
-            </div>
-          </>}
+      <Toast toasts={toasts} T={T} />
+      {showModal && <AttackModal onClose={() => setShowModal(false)} onLaunch={launchAttack} T={T} />}
 
-          {tab === "network" && <>
-            <div className="seg" style={{ marginBottom: 14 }}>
-              {[TOPOLOGY_SMALL, TOPOLOGY_COLLEGE].map(t => <button key={t.id} className="btn" aria-pressed={topoKey === t.id} onClick={() => switchTopo(t.id)}>{t.name}: {t.subtitle}</button>)}
-            </div>
-            <Topology key={topoKey} topo={topo} st={st} metrics={metrics} />
-          </>}
+      {/* ── HEADER ── */}
+      <header style={{
+        ...glass(T, { borderRadius: 0, padding: "0 28px", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between" }),
+        border: "none", borderBottom: `1px solid ${activeAttack ? T.danger + "40" : T.glassBorder}`,
+        position: "sticky", top: 0, zIndex: 100, transition: "border-color 0.4s",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 8, background: T.accentGlow,
+            border: `1px solid ${T.borderAccent}`, display: "flex", alignItems: "center", justifyContent: "center",
+            animation: activeAttack ? "glitch 0.6s infinite" : "none",
+          }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="8" r="3" fill={T.accent}/>
+              <circle cx="8" cy="8" r="6.5" stroke={T.accent} strokeWidth="1" strokeDasharray="2 2"/>
+            </svg>
+          </div>
+          <div>
+            <div style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 14, color: T.textStrong, letterSpacing: -0.3 }}>AnomalyWatch</div>
+            <div style={{ fontSize: 9, color: T.textDim, letterSpacing: 2, fontFamily: "var(--mono)" }}>MERN · ML · REAL-TIME</div>
+          </div>
+        </div>
 
-          {tab === "resilience" && <section className="resilience">
-            <div className="card"><h2>Threshold observatory <small>Adaptive detection</small></h2>
-              <p className="muted">Attackers can learn a fixed line and stay just below it. Tune the sensitivity and compare point alerts with a cumulative trend detector.</p>
-              <label className="threshold-control">Anomaly sensitivity <b>{threshold.toFixed(1)}σ</b><input type="range" min="1.0" max="3.5" step="0.1" value={threshold} onChange={e => setThreshold(Number(e.target.value))}/></label>
-              <div className="mini-grid"><div><span>Single-sample threshold</span><b>{threshold.toFixed(1)}σ</b></div><div><span>15-sample outbound total</span><b>{cumulativeEgress.toFixed(0)} MB/min-samples</b></div><div><span>Outbound trend</span><b>{egressTrend >= 0 ? "+" : ""}{egressTrend.toFixed(1)} MB/min</b></div></div>
-              <div className={"insight " + (slowExfilSuspected ? "danger" : "safe")}><b>{slowExfilSuspected ? "Cumulative exfiltration pattern detected" : "No sustained exfiltration pattern"}</b><p>{slowExfilSuspected ? "Individual readings may look harmless; the rolling total and gradual rise indicate a suspicious transfer pattern. Investigate destination, identity and data sensitivity." : "The detector also watches the accumulated outbound volume so a patient transfer cannot hide only by staying below a per-reading limit."}</p></div>
-            </div>
-            <div className="card"><h2>Host-aware response policy <small>Never isolate every machine the same way</small></h2>
-              <p className="muted">Response is based on business criticality and host role. These are recommended actions in this simulator, not commands sent to real machines.</p>
-              {[{name:"Domain Controller",role:"Identity / critical",action:"Restrict suspicious sessions, block malicious egress and require analyst approval before isolation."},{name:"NAS Storage",role:"Data / critical",action:"Pause unusual outbound transfers, preserve snapshots and keep essential internal access available."},{name:"Admin Workstation",role:"Privileged endpoint",action:"Quarantine endpoint VLAN, revoke active tokens and collect forensic evidence."},{name:"Lab PC Cluster",role:"Standard endpoint",action:"Automatically isolate the affected endpoint and allow clean rebuild."},{name:"Library / Hostel AP",role:"Shared network",action:"Apply client-level rate limits or block the offending device; do not shut down the whole access point."}].map(h => <div className="policy" key={h.name}><div><b>{h.name}</b><small>{h.role}</small></div><p>{h.action}</p></div>)}
-              <button className="btn go" onClick={() => { setResponseLog([{time:clock(),message:"Policy simulation: critical hosts protected; suspicious egress throttled; standard endpoint isolated."},...responseLog].slice(0,5)); toast("Safe response simulated","Critical services remain online; containment is scoped to the affected host.",C.mint); }}>Run safe-response simulation</button>
-              {responseLog.map((r,i)=><p className="muted" key={i}>{r.time} · {r.message}</p>)}
-            </div>
-            <div className="card"><h2>False-positive honesty <small>Explainable alerts · analyst feedback</small></h2>
-              <div className="mini-grid">
-                <div><span>Total alerts raised</span><b>{alerts.length}</b></div>
-                <div><span>Confirmed threats</span><b>{confirmedCount}</b></div>
-                <div><span>False positives</span><b>{falsePositiveCount}</b></div>
-                <div><span>Awaiting review</span><b>{pendingCount}</b></div>
-                <div><span>False-positive rate*</span><b>{fpRate}%</b></div>
-                <div><span>Precision*</span><b>{precision}%</b></div>
-              </div>
-              <p className="muted">We do not label every anomaly as an attack. Review each alert and record the outcome. Metrics marked * are calculated only from reviewed alerts; pending alerts are excluded. Precision here is confirmed threats divided by all reviewed alerts, not a validated model-performance benchmark.</p>
-              <div className="insight safe"><b>Why this alert fired</b><p>Each alert includes a plain-language reason and a suggested verification step. An unusual metric is evidence to investigate, not proof of malicious activity.</p></div>
-              <div className="feed">{alerts.slice(0,10).map(a=>{
-                const item = feedback[a.id];
-                const status = item?.status || "needs-review";
-                const label = status === "confirmed-threat" ? "Confirmed threat" : status === "false-positive" ? "False positive" : "Needs investigation";
-                const confidence = Math.round(Math.max(10, Math.min(95, (a.score || 0.35) * 100)));
-                return <div className="row" key={a.id}>
-                  <b>{a.attackName || a.metric || "Network alert"}</b><time>{a.time}</time>
-                  <p>{a.message || `${a.metric}: ${a.value}`} · Review status: <strong>{label}</strong></p>
-                  <p className="alert-explain"><strong>Reason:</strong> {explainAlert(a)}</p>
-                  <p className="alert-explain"><strong>Detector anomaly strength:</strong> {confidence}/100 (not a probability of attack).</p>
-                  <div className="feedback-actions">
-                    <button className="btn" aria-pressed={status==="confirmed-threat"} onClick={()=>classifyAlert(a.id,"confirmed-threat","Analyst verified malicious activity")}>Confirm threat</button>
-                    <button className="btn" aria-pressed={status==="false-positive"} onClick={()=>classifyAlert(a.id,"false-positive","Analyst verified legitimate activity")}>False positive</button>
-                    <button className="btn" aria-pressed={status==="needs-review"} onClick={()=>classifyAlert(a.id,"needs-review","More investigation required")}>Needs review</button>
-                  </div>
-                  {item && <small>Feedback saved: {item.reason} · {item.reviewedAt}</small>}
-                </div>;
-              })}</div>
-              <p className="muted">*Prototype limitation: feedback is held in browser memory and does not retrain the detector or persist after a full page reload. A production version should store analyst labels securely and use reviewed, verified data for controlled baseline updates.</p>
-            </div>
-          </section>}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {activeAttack && <Pill label={`${hijackedCount}/${targets.length} COMPROMISED`} color={T.danger} T={T} pulse />}
+          <Pill label={anomalousCount > 0 ? `${anomalousCount} ANOMALIES` : "NOMINAL"} color={anomalousCount > 0 ? T.warn : T.accent} T={T} pulse={anomalousCount > 0}/>
 
-          {tab === "alerts" && <div className="card" style={{ maxWidth: 860 }}>
-            <h2>Alert log<button className="btn" onClick={() => { setAlerts([]); setDismissed(new Set()); }}>Clear all</button></h2>
-            <div className="feed" style={{ maxHeight: "none" }}>{visible.length ? visible.map(a => <AlertRow key={a.id} a={a} onDismiss={dismiss} />) : <div className="empty">No alerts yet. Start a simulation to see the log fill up.</div>}</div>
-          </div>}
-        </main>
+          <ThemePicker current={themeKey} onChange={setThemeKey} T={T} />
+
+          <button onClick={() => setRunning(r => !r)} style={{
+            background: "none", border: `1px solid ${T.glassBorder}`, color: running ? T.accent : T.textDim,
+            borderRadius: 8, padding: "5px 12px", cursor: "pointer",
+            fontSize: 11, fontFamily: "var(--display)", fontWeight: 600,
+          }}>{running ? "Pause" : "Resume"}</button>
+
+          <button onClick={() => { setBurst(true); setTimeout(() => setBurst(false), 5000); }} style={{
+            background: "none", border: `1px solid ${T.danger}40`, color: T.danger,
+            borderRadius: 8, padding: "5px 12px", cursor: "pointer",
+            fontSize: 11, fontFamily: "var(--display)", fontWeight: 600,
+          }}>Inject</button>
+
+          <button onClick={() => setShowModal(true)} style={{
+            background: activeAttack ? T.dangerGlow : T.accentGlow,
+            border: `1px solid ${activeAttack ? T.danger + "50" : T.borderAccent}`,
+            color: activeAttack ? T.danger : T.accent,
+            borderRadius: 8, padding: "5px 14px", cursor: "pointer",
+            fontSize: 11, fontFamily: "var(--display)", fontWeight: 700,
+            animation: activeAttack ? "pulse 1.2s infinite" : "none",
+          }}>{activeAttack ? "Attack Active" : "Simulate Attack"}</button>
+        </div>
+      </header>
+
+      {/* ── TABS ── */}
+      <div style={{
+        ...glass(T, { borderRadius: 0, padding: "0 28px" }),
+        border: "none", borderBottom: `1px solid ${T.glassBorder}`,
+        display: "flex", gap: 2,
+      }}>
+        {["dashboard", "network", "alerts"].map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{
+            background: "none", border: "none",
+            borderBottom: `2px solid ${tab === t ? T.accent : "transparent"}`,
+            color: tab === t ? T.accent : T.textDim,
+            padding: "12px 18px", cursor: "pointer",
+            fontSize: 12, fontFamily: "var(--display)", fontWeight: tab === t ? 700 : 500,
+            textTransform: "capitalize", letterSpacing: 0.2, marginBottom: -1, transition: "color 0.2s",
+          }}>
+            {t}{t === "alerts" && alerts.length > 0 ? ` · ${alerts.length}` : ""}
+          </button>
+        ))}
       </div>
+
+      {/* ── CONTENT ── */}
+      <main style={{ padding: 24, maxWidth: 1400, margin: "0 auto" }}>
+
+        {/* DASHBOARD */}
+        {tab === "dashboard" && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 20 }}>
+            <div>
+              {/* Active attack banner */}
+              {activeAttack && (
+                <div style={{ ...glass(T, { borderRadius: 14, padding: "16px 20px", marginBottom: 20 }), border: `1px solid ${activeAttack.color}40` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                    <div>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
+                        <span style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 14, color: activeAttack.color }}>
+                          {activeAttack.name}
+                        </span>
+                        <Pill label="LIVE" color={T.danger} T={T} pulse />
+                      </div>
+                      <div style={{ color: T.text, fontSize: 12, lineHeight: 1.5, maxWidth: 500 }}>{activeAttack.description}</div>
+                    </div>
+                    <button onClick={resolveAttack} style={{
+                      background: T.accentGlow, color: T.accent, border: `1px solid ${T.borderAccent}`,
+                      borderRadius: 8, padding: "7px 14px", cursor: "pointer",
+                      fontFamily: "var(--display)", fontWeight: 700, fontSize: 11, flexShrink: 0,
+                    }}>Contain &amp; Resolve</button>
+                  </div>
+                  {attackPhase >= 0 && (
+                    <div style={{ background: T.glassHover, borderRadius: 10, padding: "10px 14px", marginBottom: 12 }}>
+                      <div style={{ fontSize: 9, color: activeAttack.color, letterSpacing: 1, fontFamily: "var(--mono)", marginBottom: 5 }}>
+                        PHASE {attackPhase+1}/{activeAttack.phases.length}
+                      </div>
+                      <div style={{ fontSize: 12, color: T.text, marginBottom: 8 }}>{activeAttack.phases[attackPhase]}</div>
+                      <div style={{ display: "flex", gap: 3 }}>
+                        {activeAttack.phases.map((_, i) => (
+                          <div key={i} style={{ flex: 1, height: 2, borderRadius: 2, background: i <= attackPhase ? activeAttack.color : T.border, transition: "background 0.4s" }}/>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+                    {targets.map(d => {
+                      const s = deviceStatuses[d.id] || "secure";
+                      const c = s === "hijacked" ? T.danger : s === "compromising" ? T.warn : T.accent;
+                      return (
+                        <div key={d.id} style={{ background: T.glassHover, border: `1px solid ${c}30`, borderRadius: 8, padding: "7px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div>
+                            <div style={{ fontSize: 11, color: T.textStrong, fontWeight: 600 }}>{d.label}</div>
+                            <div style={{ fontSize: 9, color: T.textDim, fontFamily: "var(--mono)" }}>{d.ip}</div>
+                          </div>
+                          <span style={{ fontSize: 9, color: c, fontFamily: "var(--mono)", fontWeight: 700, animation: s === "compromising" ? "pulse 1s infinite" : "none" }}>
+                            {s === "hijacked" ? "HIJACKED" : s === "compromising" ? "BREACH" : "OK"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Metrics grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 20 }}>
+                {METRICS_CONFIG.map(cfg => <MetricCard key={cfg.id} cfg={cfg} m={metrics[cfg.id]} T={T} />)}
+              </div>
+
+              {/* Event stream */}
+              <div style={{ ...glass(T, { borderRadius: 14, padding: 18 }) }}>
+                <div style={{ fontSize: 10, color: T.textDim, letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "var(--mono)", marginBottom: 12 }}>Live Event Stream</div>
+                <div style={{ maxHeight: 220, overflowY: "auto" }}>
+                  {visible.length === 0
+                    ? <div style={{ color: T.textDim, fontSize: 12, textAlign: "center", padding: 24 }}>No anomalies detected</div>
+                    : visible.slice(0, 12).map(a => <AlertRow key={a.id} alert={a} onDismiss={id => setDismissed(d => new Set([...d, id]))} T={T} />)
+                  }
+                </div>
+              </div>
+            </div>
+
+            {/* ── Sidebar ── */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* ML Model */}
+              <div style={{ ...glass(T, { borderRadius: 14, padding: 18 }) }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
+                  <span style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 12, color: T.textStrong }}>ML Engine</span>
+                  <Pill label="ACTIVE" color={T.accent} T={T} />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  {[
+                    { l: "Algorithm", v: "Isolation Forest" },
+                    { l: "Window",    v: "50 samples" },
+                    { l: "Threshold", v: "σ > 2.5" },
+                    { l: "Processed", v: modelInfo.processed.toLocaleString() },
+                    { l: "Anomalies", v: modelInfo.total },
+                    { l: "Accuracy",  v: `${modelInfo.accuracy}%` },
+                  ].map(({ l, v }) => (
+                    <div key={l}>
+                      <div style={{ color: T.textDim, fontSize: 9, marginBottom: 2, letterSpacing: 0.5 }}>{l}</div>
+                      <div style={{ color: T.accent, fontSize: 12, fontWeight: 700, fontFamily: "var(--mono)" }}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Devices */}
+              <div style={{ ...glass(T, { borderRadius: 14, padding: 18 }), border: `1px solid ${activeAttack ? T.danger+"30" : T.glassBorder}`, transition: "border-color 0.4s" }}>
+                <span style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 12, color: T.textStrong, display: "block", marginBottom: 12 }}>Device Nodes</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 300, overflowY: "auto" }}>
+                  {targets.map(d => {
+                    const s = deviceStatuses[d.id] || "secure";
+                    const c = s === "hijacked" ? T.danger : s === "compromising" ? T.warn : T.accent;
+                    return (
+                      <div key={d.id} style={{ background: T.glassHover, border: `1px solid ${c}25`, borderRadius: 8, padding: "7px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                          <div style={{ fontSize: 11, color: T.textStrong, fontWeight: 600 }}>{d.label}</div>
+                          <div style={{ fontSize: 9, color: T.textDim, fontFamily: "var(--mono)" }}>{d.ip}</div>
+                        </div>
+                        <span style={{ fontSize: 9, color: c, fontFamily: "var(--mono)", fontWeight: 700 }}>
+                          {s === "hijacked" ? "HIJACKED" : s === "compromising" ? "BREACH" : "SECURE"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Score bars */}
+              <div style={{ ...glass(T, { borderRadius: 14, padding: 18 }) }}>
+                <span style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 12, color: T.textStrong, display: "block", marginBottom: 14 }}>Anomaly Scores</span>
+                {METRICS_CONFIG.map(cfg => {
+                  const sc = metrics[cfg.id].score;
+                  return (
+                    <div key={cfg.id} style={{ marginBottom: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                        <span style={{ fontSize: 11, color: T.textDim }}>{cfg.label}</span>
+                        <span style={{ fontSize: 10, color: sc > 0.5 ? T.danger : T.accent, fontFamily: "var(--mono)", fontWeight: 700 }}>{(sc*100).toFixed(0)}%</span>
+                      </div>
+                      <div style={{ background: T.border, borderRadius: 3, height: 4, overflow: "hidden" }}>
+                        <div style={{ width: `${sc*100}%`, height: "100%", borderRadius: 3, background: sc > 0.7 ? T.danger : sc > 0.4 ? T.warn : cfg.color, transition: "width 0.4s, background 0.4s" }}/>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* NETWORK */}
+        {tab === "network" && (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20 }}>
+              <div>
+                <h2 style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 22, color: T.textStrong, letterSpacing: -0.5, marginBottom: 4 }}>Network Topology</h2>
+                <p style={{ color: T.textDim, fontSize: 13 }}>Live device graph with real-time attack propagation. Click any node for details.</p>
+              </div>
+              {/* Topology switcher */}
+              <div style={{ display: "flex", gap: 6 }}>
+                {[TOPOLOGY_SMALL, TOPOLOGY_COLLEGE].map(tp => (
+                  <button key={tp.id} onClick={() => switchTopology(tp.id)} style={{
+                    background: topoKey === tp.id ? T.accentGlow : "none",
+                    border: `1px solid ${topoKey === tp.id ? T.borderAccent : T.glassBorder}`,
+                    color: topoKey === tp.id ? T.accent : T.textDim,
+                    borderRadius: 8, padding: "7px 16px", cursor: "pointer",
+                    fontFamily: "var(--display)", fontWeight: 700, fontSize: 11, transition: "all 0.2s",
+                  }}>
+                    <div style={{ color: topoKey === tp.id ? T.accent : T.textDim, fontWeight: 700 }}>{tp.name}</div>
+                    <div style={{ fontSize: 9, color: T.textDim, marginTop: 1 }}>{tp.subtitle}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ ...glass(T, { borderRadius: 16 }) }}>
+              <NetworkGraph key={topoKey} topology={topology} deviceStatuses={deviceStatuses} T={T} />
+            </div>
+          </div>
+        )}
+
+        {/* ALERTS */}
+        {tab === "alerts" && (
+          <div style={{ maxWidth: 820 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h2 style={{ fontFamily: "var(--display)", fontWeight: 800, fontSize: 22, color: T.textStrong, letterSpacing: -0.5 }}>
+                Alert Log <span style={{ color: T.textDim, fontSize: 15, fontWeight: 500 }}>· {alerts.length}</span>
+              </h2>
+              <button onClick={() => { setAlerts([]); setDismissed(new Set()); }} style={{
+                background: "none", border: `1px solid ${T.glassBorder}`, color: T.textDim,
+                padding: "7px 14px", borderRadius: 8, cursor: "pointer",
+                fontSize: 11, fontFamily: "var(--display)", fontWeight: 600,
+              }}>Clear All</button>
+            </div>
+            {alerts.length === 0
+              ? <div style={{ color: T.textDim, textAlign: "center", padding: 60, fontSize: 14 }}>No alerts recorded</div>
+              : alerts.map(a => <AlertRow key={a.id} alert={a} onDismiss={id => setDismissed(d => new Set([...d, id]))} T={T} />)
+            }
+          </div>
+        )}
+      </main>
     </div>
   );
 }

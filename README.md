@@ -22,7 +22,7 @@ Production build: `npm run build` (output in `dist/`).
 - Two switchable network topologies:
   - Network 1: client and server
   - Network 2: college campus network (15 nodes)
-- One cinematic SOC theme (bg image tints red during an attack)
+- Five themes: Midnight, Slate, Aurora, Frost, Carbon
 - Alert log with dismissable entries and toast notifications
 
 ## Notes
@@ -41,36 +41,5 @@ anomalywatch/
   vite.config.js
   src/
     main.jsx
-    App.jsx     # new UI
-    data.js     # metrics, attacks, topologies, scoring
-    styles.css
-    assets/bg.jpg
+    App.jsx     # whole dashboard (themes, metrics, topologies, attack sim)
 ```
-
-## Resilience upgrades (Hurdle: attacker learns your threshold)
-
-The Resilience view adds three defensive capabilities:
-
-1. **Threshold observatory:** tune the anomaly sensitivity and inspect a rolling outbound-data total/trend. The Low-and-Slow Exfiltration scenario demonstrates why single-reading thresholds are insufficient: the detector also correlates sustained outbound activity.
-2. **Host-aware response policy:** critical infrastructure (Domain Controller, NAS, shared access points) receives scoped containment recommendations rather than blanket shutdown. Standard endpoints can be isolated more aggressively. The button runs a simulation only; it does not touch real hosts.
-3. **False-positive feedback:** analysts can mark alerts as false positives. The dashboard displays the count and share of alerts marked this way, making detector quality visible rather than claiming every alert is a confirmed attack.
-
-The app remains a front-end simulation using synthetic telemetry. These controls are demonstration logic, not a production IDS/IPS or live endpoint-response integration.
-
-
-## Hurdle 3 enhancement: False-positive honesty
-
-The Resilience view now includes an explainable analyst-feedback workflow:
-- **Confirm threat**, **False positive**, and **Needs review** labels for each recent alert.
-- Plain-language explanation of why the metric may have triggered and what to verify.
-- Detector anomaly-strength indicator (explicitly not presented as attack probability).
-- Live counts for confirmed threats, false positives, pending reviews, reviewed false-positive rate, and reviewed-alert precision.
-- Metrics exclude pending alerts so unresolved alarms are not silently treated as attacks.
-
-**Prototype limitation:** analyst feedback is held in React state in the browser. It is not persisted after a full page reload and does not automatically retrain the detector. A production deployment should store reviewed labels in an authenticated backend and use only verified, approved labels for carefully monitored baseline updates.
-
-## Run locally
-1. Install Node.js (LTS).
-2. Open a terminal in the `anomalywatch` folder.
-3. Run `npm install`.
-4. Run `npm run dev` and open the local URL printed by Vite.
