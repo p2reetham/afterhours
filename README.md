@@ -56,3 +56,21 @@ The Resilience view adds three defensive capabilities:
 3. **False-positive feedback:** analysts can mark alerts as false positives. The dashboard displays the count and share of alerts marked this way, making detector quality visible rather than claiming every alert is a confirmed attack.
 
 The app remains a front-end simulation using synthetic telemetry. These controls are demonstration logic, not a production IDS/IPS or live endpoint-response integration.
+
+
+## Hurdle 3 enhancement: False-positive honesty
+
+The Resilience view now includes an explainable analyst-feedback workflow:
+- **Confirm threat**, **False positive**, and **Needs review** labels for each recent alert.
+- Plain-language explanation of why the metric may have triggered and what to verify.
+- Detector anomaly-strength indicator (explicitly not presented as attack probability).
+- Live counts for confirmed threats, false positives, pending reviews, reviewed false-positive rate, and reviewed-alert precision.
+- Metrics exclude pending alerts so unresolved alarms are not silently treated as attacks.
+
+**Prototype limitation:** analyst feedback is held in React state in the browser. It is not persisted after a full page reload and does not automatically retrain the detector. A production deployment should store reviewed labels in an authenticated backend and use only verified, approved labels for carefully monitored baseline updates.
+
+## Run locally
+1. Install Node.js (LTS).
+2. Open a terminal in the `anomalywatch` folder.
+3. Run `npm install`.
+4. Run `npm run dev` and open the local URL printed by Vite.
