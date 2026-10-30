@@ -1,16 +1,48 @@
-# React + Vite
+# AnomalyWatch
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Real-time anomaly detection dashboard with a cyber-attack simulator and
+network topology views. Built with React + Vite.
 
-Currently, two official plugins are available:
+## Run
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
+Then open the URL Vite prints (usually http://localhost:5173).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Production build: `npm run build` (output in `dist/`).
 
-## Expanding the ESLint configuration
+## Features
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Six live metric streams (CPU, memory, latency, requests/sec, error rate, disk I/O)
+- Sliding-window z-score anomaly scoring (50 samples), scored 0-100%
+- Attack simulator: DDoS, ransomware, man-in-the-middle, cryptojacking, SQL injection
+- Two switchable network topologies:
+  - Network 1: client and server
+  - Network 2: college campus network (15 nodes)
+- One cinematic SOC theme (bg image tints red during an attack)
+- Alert log with dismissable entries and toast notifications
+
+## Notes
+
+All data is simulated in the browser. There is no backend yet. The anomaly
+scorer in `src/App.jsx` (`anomalyScore`) is a z-score heuristic, not a trained
+Isolation Forest. Both are natural next steps if you want to connect a real
+Express/MongoDB/Flask stack.
+
+## Structure
+
+```
+anomalywatch/
+  index.html
+  package.json
+  vite.config.js
+  src/
+    main.jsx
+    App.jsx     # new UI
+    data.js     # metrics, attacks, topologies, scoring
+    styles.css
+    assets/bg.jpg
+```
