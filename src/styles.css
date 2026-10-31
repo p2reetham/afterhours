@@ -146,3 +146,9 @@ main{padding:22px clamp(16px,3vw,40px) 40px;min-width:0}
 .policy{display:grid;grid-template-columns:minmax(130px,.65fr) 1.8fr;gap:14px;padding:13px 0;border-bottom:1px solid rgba(110,200,255,.12)}.policy>div{display:flex;flex-direction:column;gap:5px}.policy p{margin:0;color:#b7cbd9;font-size:13px;line-height:1.5}
 .resilience .row button{margin-top:8px}.resilience .row small{display:block;color:#58f0b0;margin-top:5px}
 @media(max-width:850px){.resilience{grid-template-columns:1fr}.resilience>.card{grid-column:1}.mini-grid{grid-template-columns:1fr}.policy{grid-template-columns:1fr}}
+
+/* Analyst feedback and explainability */
+.feedback-actions{display:flex;gap:7px;flex-wrap:wrap;grid-column:1/-1;margin-top:5px}
+.feedback-actions .btn[aria-pressed=true]{border-color:var(--mint);color:var(--mint);background:rgba(88,240,176,.1)}
+.alert-explain{color:#9db3c6!important;font-size:12px}
+@media(max-width:640px){.feedback-actions{display:grid;grid-template-columns:1fr}}

@@ -232,7 +232,8 @@ export default function App() {
   const [toasts, setToasts] = useState([]);
   const [topoKey, setTopoKey] = useState("college");
   const [threshold, setThreshold] = useState(1.8);
-  const [falsePositives, setFalsePositives] = useState(new Set());
+  // Analyst labels are kept separately from detector output: an alert is not a confirmed attack
+  // until an analyst reviews it. This demo stores feedback in React state (not a backend).
   const [feedback, setFeedback] = useState({});
   const [responseLog, setResponseLog] = useState([]);
   const topo = topoKey === "small" ? TOPOLOGY_SMALL : TOPOLOGY_COLLEGE;
@@ -293,7 +294,22 @@ export default function App() {
   const cumulativeEgress = egressHistory.slice(-15).reduce((sum, value) => sum + value, 0);
   const egressTrend = egressHistory.length > 1 ? egressHistory.at(-1) - egressHistory.at(-15) : 0;
   const slowExfilSuspected = !!(attack?.id === "low-slow-exfil" && cumulativeEgress > 250) || (egressTrend > 3 && cumulativeEgress > 250);
-  const fpRate = alerts.length ? Math.round(falsePositives.size / alerts.length * 100) : 0;
+  const reviewed = Object.values(feedback).filter(x => x.status !== "needs-review");
+  const falsePositiveCount = reviewed.filter(x => x.status === "false-positive").length;
+  const confirmedCount = reviewed.filter(x => x.status === "confirmed-threat").length;
+  const pendingCount = alerts.length - reviewed.length;
+  const fpRate = reviewed.length ? Math.round(falsePositiveCount / reviewed.length * 100) : 0;
+  const precision = reviewed.length ? Math.round(confirmedCount / reviewed.length * 100) : 0;
+  const classifyAlert = (id, status, reason) => setFeedback(prev => ({
+    ...prev, [id]: { status, reason, reviewedAt: clock() }
+  }));
+  const explainAlert = a => {
+    const metric = (a.metric || "network activity").toLowerCase();
+    if (metric.includes("outbound")) return "Outbound volume deviated from its recent baseline; verify destination and whether a backup or upload was scheduled.";
+    if (metric.includes("error")) return "Error rate rose above its recent pattern; check deployments, retries and service health before treating it as malicious.";
+    if (metric.includes("latency")) return "Latency deviated from the recent baseline; congestion or maintenance may explain it.";
+    return "This metric deviated from its recent baseline. Correlate host, destination, time and related signals before escalating.";
+  };
   const bad = Object.values(st).filter(v => v === "hijacked").length;
   const threat = Math.min(100, Math.round(Math.max((vals.reduce((a, m) => a + m.score, 0) / vals.length) * 150, (bad / targets.length) * 100)));
   const visible = alerts.filter(a => !dismissed.has(a.id));
@@ -371,10 +387,36 @@ export default function App() {
               <button className="btn go" onClick={() => { setResponseLog([{time:clock(),message:"Policy simulation: critical hosts protected; suspicious egress throttled; standard endpoint isolated."},...responseLog].slice(0,5)); toast("Safe response simulated","Critical services remain online; containment is scoped to the affected host.",C.mint); }}>Run safe-response simulation</button>
               {responseLog.map((r,i)=><p className="muted" key={i}>{r.time} · {r.message}</p>)}
             </div>
-            <div className="card"><h2>False-positive honesty <small>Analyst feedback loop</small></h2>
-              <div className="mini-grid"><div><span>Alerts raised</span><b>{alerts.length}</b></div><div><span>Marked false positive</span><b>{falsePositives.size}</b></div><div><span>Current false-positive share</span><b>{fpRate}%</b></div></div>
-              <p className="muted">A detector is not perfect. Mark an alert as a false positive when investigation finds a legitimate cause. The dashboard reports this feedback instead of treating every alarm as a confirmed attack.</p>
-              <div className="feed">{alerts.slice(0,8).map(a=><div className="row" key={a.id}><b>{a.attackName || a.metric || "Alert"}</b><time>{a.time}</time><p>{a.message || `${a.metric}: ${a.value}`}</p><button className="btn" disabled={falsePositives.has(a.id)} onClick={()=>{setFalsePositives(v=>new Set([...v,a.id]));setFeedback(v=>({...v,[a.id]:"Reviewed: legitimate activity / false positive"}));}}>{falsePositives.has(a.id)?"Marked false positive":"Mark false positive"}</button>{feedback[a.id] && <small>{feedback[a.id]}</small>}</div>)}</div>
+            <div className="card"><h2>False-positive honesty <small>Explainable alerts · analyst feedback</small></h2>
+              <div className="mini-grid">
+                <div><span>Total alerts raised</span><b>{alerts.length}</b></div>
+                <div><span>Confirmed threats</span><b>{confirmedCount}</b></div>
+                <div><span>False positives</span><b>{falsePositiveCount}</b></div>
+                <div><span>Awaiting review</span><b>{pendingCount}</b></div>
+                <div><span>False-positive rate*</span><b>{fpRate}%</b></div>
+                <div><span>Precision*</span><b>{precision}%</b></div>
+              </div>
+              <p className="muted">We do not label every anomaly as an attack. Review each alert and record the outcome. Metrics marked * are calculated only from reviewed alerts; pending alerts are excluded. Precision here is confirmed threats divided by all reviewed alerts, not a validated model-performance benchmark.</p>
+              <div className="insight safe"><b>Why this alert fired</b><p>Each alert includes a plain-language reason and a suggested verification step. An unusual metric is evidence to investigate, not proof of malicious activity.</p></div>
+              <div className="feed">{alerts.slice(0,10).map(a=>{
+                const item = feedback[a.id];
+                const status = item?.status || "needs-review";
+                const label = status === "confirmed-threat" ? "Confirmed threat" : status === "false-positive" ? "False positive" : "Needs investigation";
+                const confidence = Math.round(Math.max(10, Math.min(95, (a.score || 0.35) * 100)));
+                return <div className="row" key={a.id}>
+                  <b>{a.attackName || a.metric || "Network alert"}</b><time>{a.time}</time>
+                  <p>{a.message || `${a.metric}: ${a.value}`} · Review status: <strong>{label}</strong></p>
+                  <p className="alert-explain"><strong>Reason:</strong> {explainAlert(a)}</p>
+                  <p className="alert-explain"><strong>Detector anomaly strength:</strong> {confidence}/100 (not a probability of attack).</p>
+                  <div className="feedback-actions">
+                    <button className="btn" aria-pressed={status==="confirmed-threat"} onClick={()=>classifyAlert(a.id,"confirmed-threat","Analyst verified malicious activity")}>Confirm threat</button>
+                    <button className="btn" aria-pressed={status==="false-positive"} onClick={()=>classifyAlert(a.id,"false-positive","Analyst verified legitimate activity")}>False positive</button>
+                    <button className="btn" aria-pressed={status==="needs-review"} onClick={()=>classifyAlert(a.id,"needs-review","More investigation required")}>Needs review</button>
+                  </div>
+                  {item && <small>Feedback saved: {item.reason} · {item.reviewedAt}</small>}
+                </div>;
+              })}</div>
+              <p className="muted">*Prototype limitation: feedback is held in browser memory and does not retrain the detector or persist after a full page reload. A production version should store analyst labels securely and use reviewed, verified data for controlled baseline updates.</p>
             </div>
           </section>}
 
